@@ -1,4 +1,5 @@
 # -*- encoding: utf-8 -*-
+
 __docformat__ = 'restructuredtext en'
 
 import errno
@@ -39,6 +40,15 @@ class HealthMonitorManager(manager.Manager):
 #        print "HelloMgr"
 ##        self.topic = topic
 
+    class MigrationSettings(object):
+        block_migration=None,
+        disk_over_commit=None
+
+        def __init__(self):
+            self.block_migration = True
+            self.disk_over_commit = True
+
+    migration_settings = MigrationSettings()
 
     def init_host(self):
         LOG.info("Info")
@@ -72,5 +82,73 @@ class HealthMonitorManager(manager.Manager):
         LOG.debug(_("Got message %s") % message)
 
         #TODO: try get message from node.
+
+
+    def prepare_resource_allocation_algorithm(self, hostname, resource):
+        """
+        :param hostname: String
+        :param resource: String
+        :return:
+        """
+
+        collectedData = self.collect_data(hostname, resource)
+        virtualMachines = self.get_virtual_machines_locations()
+        physicalNodes = self.get_physical_nodes_resources_utilization()
+
+        input_data_set = dict(resources_history=collectedData, virtual_machines=virtualMachines, physical_nodes=physicalNodes)
+
+        migrationPlans = self.create_migration_plans(input_data_set)
+
+        self.execute_plan(migrationPlans)
+
+        pass
+
+    def get_virtual_machines_locations(self):
+        pass
+
+    def get_physical_nodes_resources_utilization(self):
+        pass
+
+    def create_migration_plans(self, input_data_set):
+        #TODO
+        pass
+
+    def execute_plan(self, migrationPlans):
+        """
+        :param migrationPlans: list
+        :return:
+        """
+        try:
+            plan = self.choose_migration_plan(migrationPlans)
+            ctx = context.get_admin_context()
+
+            for instance in plan.instances:
+                migration_status = self.scheduler_rpcapi.live_migration(ctxt=ctx,
+                        block_migration=self.migration_settings.block_migration,
+                        disk_over_commit=self.migration_settings.disk_over_commit,
+                        instance_id=instance.id,
+                        dest=instance.dest,
+                        topic = FLAGS.compute_topic)
+
+        except:
+            raise
+
+    def choose_migration_plan(self, plans):
+        #TODO
+        if len(plans) > 0:
+            plan = sorted(plans, key= lambda score : plan.score)
+            #plan = plans.reverse().pop()
+            return plan
+        else:
+            raise Exception("There is no migration plan")
+
+    def collect_data(self, hostname, resource):
+        """
+
+        :return:
+        """
+        pass
+
+
 
 
