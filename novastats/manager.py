@@ -10,6 +10,7 @@ import random
 import signal
 import sys
 import time
+import datetime
 
 import eventlet
 import greenlet
@@ -28,7 +29,7 @@ from nova.openstack.common import context
 
 from ceilometer.healthmonitor.rpcapi import HealthMonitorNodeAPI
 from algorithms.simple import SimpleBackpackAlgorithm
-
+from rrd.rrd import RrdWrapper
 
 from rpcapi import HealthMonitorAPI
 
@@ -44,6 +45,8 @@ FLAGS = flags.FLAGS
 
 class HealthMonitorManager(manager.Manager):
     BASE_RPC_API_VERSION = '1.0'
+
+    RRD_ROOT_DIR = ""
 
 #    def __init__(self, topic=None):
 #        print "HelloMgr"
@@ -169,11 +172,36 @@ class HealthMonitorManager(manager.Manager):
 
     def collect_data(self, hostname, vm_name, resource):
         """
-            Collect historical data about resource utilization for given node (hostname/virtual machine)
+            Collect historical data about resource utilization for given node (hostname/virtual machine).
+
+            CUrrently it's implemented to retrieve data from RRD's files.
         :return:
         """
 
         #node_topic = '%s.%s' % (HealthMonitorNodeAPI.HEALTH_MONITOR_NODE_TOPIC, hostname)
+
+        if self.local_storage is None:
+            self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
+
+        node = "%s.%s.%s" % (hostname, vm_name)
+
+        endTime = datetime.datetime.now()
+        startTime = endTime - datetime.timedelta(day=1) # TODO: Move to configuration file customizable timedelta
+
+        self.local_storage.query(startTime, endTime, resource, node)
+
+        return None
+
+    def collect_data_remote(self, hostname, vm_name, resource):
+        """
+            Collect data from network (AMQP). Not Implemented
+        :param hostname:
+        :param vm_name:
+        :param resource:
+        :return:
+        """
+        raise NotImplemented
+
         health_rpc_api = HealthMonitorNodeAPI(hostname)
 
         if health_rpc_api is None:
@@ -181,8 +209,8 @@ class HealthMonitorManager(manager.Manager):
 
         message = {"resource" : resource, "vm_name": vm_name}
 
-        ctx = self.ctx()
-        return health_rpc_api.collect_recent_stats(ctx, message)
+        return health_rpc_api.collect_recent_stats(self.ctx, message)
+
 
     def get_virtual_machines_locations(self):
         """
