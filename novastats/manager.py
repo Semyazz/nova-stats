@@ -50,28 +50,25 @@ class HealthMonitorManager(manager.Manager):
 ##        self.topic = topic
 
     # RPC API Implementation -------------------------------------------------------------------------------------------
-    def raise_alert(self, ctx=None, alert="1"):
+    def raise_alert(self, ctx=None, alert=None):
+        #LOG.info(alert)
         print alert
-
         #TODO: try get message from node.
     #-------------------------------------------------------------------------------------------------------------------
 
 
     # Manager inherited ------------------------------------------------------------------------------------------------
     def init_host(self):
-        LOG.info("Info testasdfasdfadsfa")
-        self.topic = "health_monitor"
-        LOG.info("Context")
+        self.topic = HealthMonitorAPI.HEALTH_MONITOR_TOPIC
         self.ctx = context.get_admin_context()
         self.ctx.read_deleted = "no"
-        LOG.info("Got context")
-        instances = self.db.instance_get_all_by_host(self.ctx, self.host)
-        LOG.info("Got instances")
+        self.instances = self.db.instance_get_all_by_host(self.ctx, self.host)
         self.migration_algorithm = SimpleBackpackAlgorithm()
 
         self._init_monitors_connections()
-        LOG.info("initialized consumer")
-        pass
+        #self._init_scheduler()
+
+        self._test_rpc_call()
 
     def periodic_tasks(self, context, raise_on_error=False):
         pass
@@ -103,43 +100,16 @@ class HealthMonitorManager(manager.Manager):
 
         self.conn = rpc.create_connection(new=True)
 
-        LOG.info(self.conn.conf.__dict__)
-
-        LOG.info( "%s" % self.conn)
-        LOG.debug(self.conn)
         LOG.debug(_("Creating Consumer connection for Service %s") % self.topic)
 
         rpc_dispatcher = self.create_rpc_dispatcher()
 
         # According to documentation fanout=True => broadcast to all services.
-        self.conn.create_consumer(self.topic, rpc_dispatcher, fanout=True)
+        self.conn.create_consumer(self.topic, self, fanout=True)
 
         # Consume from all consumers in a thread
         self.conn.consume_in_thread()
 
-        time.sleep(10)
-
-        api = HealthMonitorAPI()
-        #LOG.info(api.topic)
-        api.raise_alert(self.ctx, alert= {"alert":"test"})
-
-#    test_thread_obj = None
-#
-#    def show_log(self):
-#        self.x = 100
-#        LOG.info("helo")
-#
-#    def test_thread(self):
-#
-#        """Consumer from all queues/consumers in a greenthread"""
-#        def _test_thread():
-#            try:
-#                self.show_log()
-#            except greenlet.GreenletExit:
-#                LOG.error("OPS")
-#        if self.test_thread_obj is None:
-#            self.test_thread_obj = eventlet.spawn(_test_thread)
-#        return self.test_thread_obj
 
 
     def prepare_resource_allocation_algorithm_input(self, hostname, vm_name, resource):
@@ -187,7 +157,7 @@ class HealthMonitorManager(manager.Manager):
             ctx = context.get_admin_context()
 
             for instance in plan.instances:
-                migration_status = self.scheduler_rpcapi.live_migration(ctxt=ctx,
+                migration_status = self.scheduler_rpc_api.live_migration(ctxt=ctx,
                         block_migration=self.migration_settings.block_migration,
                         disk_over_commit=self.migration_settings.disk_over_commit,
                         instance_id=instance.id,
@@ -211,7 +181,7 @@ class HealthMonitorManager(manager.Manager):
 
         message = {"resource" : resource, "vm_name": vm_name}
 
-        ctx = context.get_admin_context()
+        ctx = self.ctx()
         return health_rpc_api.collect_recent_stats(ctx, message)
 
     def get_virtual_machines_locations(self):
@@ -223,6 +193,15 @@ class HealthMonitorManager(manager.Manager):
 
     def get_physical_nodes_resources_utilization(self):
         pass
+
+    def _test_rpc_call(self):
+
+        health_monitor_node_rpc_api = HealthMonitorNodeAPI(self.host)
+        message = {"resource" : "RAM", "vm_name": "SEMY"}
+
+        result = health_monitor_node_rpc_api.collect_recent_stats(self.ctx, message)
+        LOG.info("Received: %s" % result)
+
 
 
 

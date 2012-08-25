@@ -32,6 +32,7 @@ class HealthMonitorAPI(nova.openstack.common.rpc.proxy.RpcProxy):
     pass
 
     BASE_RPC_API_VERSION = '1.0'
+    HEALTH_MONITOR_TOPIC = "health_monitor"
 
     @staticmethod
     def make_msg(method, **kwargs):
@@ -39,7 +40,7 @@ class HealthMonitorAPI(nova.openstack.common.rpc.proxy.RpcProxy):
 
     def __init__(self):
         super(HealthMonitorAPI, self).__init__(
-            topic = "health_monitor",
+            topic = self.HEALTH_MONITOR_TOPIC,
             default_version=self.BASE_RPC_API_VERSION)
 
 
