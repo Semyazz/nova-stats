@@ -2,14 +2,14 @@ from setuptools import setup
 
 
 setup(
-    name='nova-stats',
+    name='novastats',
     version='',
     url='',
     license='',
     author='semy',
     author_email='',
     description='',
-    packages=['nova-stats'],
+    packages=['novastats'],
     include_package_data=True,
     scripts=['bin/health-monitor'],
 )
