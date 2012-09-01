@@ -183,7 +183,7 @@ class HealthMonitorManager(manager.Manager):
         if self.local_storage is None:
             self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
 
-        node = "%s.%s.%s" % (hostname, vm_name)
+        node = "%s.%s" % (hostname, vm_name)
 
         endTime = datetime.datetime.now()
         startTime = endTime - datetime.timedelta(day=1) # TODO: Move to configuration file customizable timedelta

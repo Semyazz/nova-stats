@@ -1,0 +1,39 @@
+#!/usr/bin/env ipython
+# -*- encoding: utf-8 -*-
+
+import eventlet
+eventlet.monkey_patch()
+
+import sys
+
+from nova import flags
+from nova.openstack.common import log as logging
+from nova import service
+from nova import utils
+
+
+if __name__ == '__main__':
+
+# Register the compute options from nova with our config object so
+# our pollsters can figure out which compute driver the hypervisor
+# is using.
+#    cfg.CONF.register_opts(compute_manager.compute_opts)
+
+    try:
+        logging.setup("novastats")
+        LOG = logging.getLogger("novastats")
+        LOG.logger.setLevel(10)
+    except Exception as err:
+        print err
+    flags.parse_args(sys.argv)
+    logging.setup("health-monitor")
+    utils.monkey_patch()
+    try:
+        server = service.Service.create(binary='health-monitor',
+            topic='health_monitor',
+            manager='novastats.manager.HealthMonitorManager',
+            periodic_interval=None)
+        service.serve(server)
+        service.wait()
+    except Exception as err:
+        LOG.error(err)
