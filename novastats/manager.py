@@ -12,10 +12,6 @@ import sys
 import time
 import datetime
 
-import eventlet
-import greenlet
-eventlet.monkey_patch()
-
 import nova.scheduler
 from nova import context
 from nova import flags
@@ -23,11 +19,11 @@ from nova import manager
 from nova.scheduler import rpcapi
 from nova.openstack.common import cfg
 from nova.openstack.common import importutils
-from nova.openstack.common import log as logging
+from ceilometer.openstack.common import log as logging
 from nova.openstack.common import rpc
 from nova.openstack.common import context
 
-from ceilometer.healthmonitor.rpcapi import HealthMonitorNodeAPI
+from ceilometer.ganglia.rpcapi import HealthMonitorNodeAPI
 from algorithms.simple import SimpleBackpackAlgorithm
 from rrd.rrd import RrdWrapper
 
@@ -40,11 +36,12 @@ except ImportError:
     import nova.rpc as nova_rpc
 
 LOG = logging.getLogger(__name__)
-print __name__
-FLAGS = flags.FLAGS
+#FLAGS = flags.FLAGS
+#LOG.logger.setLevel(10)
 
 class HealthMonitorManager(manager.Manager):
     BASE_RPC_API_VERSION = '1.0'
+    RPC_API_VERSION = '1.0'
 
     RRD_ROOT_DIR = ""
 
@@ -54,9 +51,8 @@ class HealthMonitorManager(manager.Manager):
 
     # RPC API Implementation -------------------------------------------------------------------------------------------
     def raise_alert(self, ctx=None, alert=None):
-        #LOG.info(alert)
-        print alert
-        #TODO: try get message from node.
+        LOG.info(alert)
+#        print alert
     #-------------------------------------------------------------------------------------------------------------------
 
 
@@ -69,9 +65,9 @@ class HealthMonitorManager(manager.Manager):
         self.migration_algorithm = SimpleBackpackAlgorithm()
 
         self._init_monitors_connections()
-        #self._init_scheduler()
+#        self._init_scheduler()
 
-        self._test_rpc_call()
+#        self._test_rpc_call()
 
     def periodic_tasks(self, context, raise_on_error=False):
         pass

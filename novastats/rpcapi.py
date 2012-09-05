@@ -45,8 +45,13 @@ class HealthMonitorAPI(nova.openstack.common.rpc.proxy.RpcProxy):
 
 
     def raise_alert(self, ctxt, alert):
-        self.fanout_cast(ctxt, 
-                         self.make_msg('raise_alert', alert=alert),
-                         None)
+        self.cast(context=ctxt,
+                msg=self.make_msg('raise_alert', alert=alert),
+                topic=self.HEALTH_MONITOR_TOPIC,
+                version=self.BASE_RPC_API_VERSION)
+
+#        self.fanout_cast(ctxt,
+#                         self.make_msg('raise_alert', alert=alert),
+#                         None)
 #        self.cast(context=ctxt, msg=message, topic="health_monitor",version=None)
 

@@ -10,6 +10,11 @@ from nova import flags
 from nova.openstack.common import log as logging
 from nova import service
 from nova import utils
+from nova.compute import manager as compute_manager
+
+from ceilometer.openstack.common import log
+from ceilometer.openstack.common import cfg
+from ceilometer.service import prepare_service
 
 
 if __name__ == '__main__':
@@ -19,15 +24,22 @@ if __name__ == '__main__':
 # is using.
 #    cfg.CONF.register_opts(compute_manager.compute_opts)
 
-    try:
-        logging.setup("novastats")
-        LOG = logging.getLogger("novastats")
-        LOG.logger.setLevel(10)
-    except Exception as err:
-        print err
-    flags.parse_args(sys.argv)
-    logging.setup("health-monitor")
+#    try:
+#        logging.setup("novastats")
+#        LOG = logging.getLogger("novastats")
+#        LOG.loger.setLevel(10)
+#    except Exception as err:
+#        print err
+
+#    flags.parse_args(sys.argv)
+#    logging.setup("health_monitor")
+#TODO: Remove old debug stuff
+
     utils.monkey_patch()
+
+    cfg.CONF.register_opts(compute_manager.compute_opts)
+    prepare_service(sys.argv)
+
     try:
         server = service.Service.create(binary='health-monitor',
             topic='health_monitor',
