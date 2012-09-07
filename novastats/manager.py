@@ -182,7 +182,7 @@ class HealthMonitorManager(manager.Manager):
         node = "%s.%s" % (hostname, vm_name)
 
         endTime = datetime.datetime.now()
-        startTime = endTime - datetime.timedelta(day=1) # TODO: Move to configuration file customizable timedelta
+        startTime = endTime - datetime.timedelta(hours=1) # TODO: Move to configuration file customizable timedelta
 
         self.local_storage.query(startTime, endTime, resource, node)
 

@@ -15,7 +15,7 @@ class RrdWrapper:
     def __init__(self, rrd_rootdir):
         self.rrd_rootdir = rrd_rootdir
 
-    def query(self, startTime, endTime, metricName, hostname = "__SummaryInfo__", clusterName = ""):
+    def query(self, startTime, endTime, metricName, instance=None, hostname = "__SummaryInfo__", clusterName = "Openstack"):
         """ Get dictionary with proper data from given period of time and for given node
 
         :param startTime:
@@ -42,24 +42,24 @@ class RrdWrapper:
             raise Exception("Null parameter %s", "startTime")
 
         if startTime > endTime:
-            tmp = startTime
-            startTime = endTime
-            endTime = tmp
-        elif endTime > startTime:
-            tmp = endTime
-            endTime = startTime
-            startTime = tmp
+            startTime, endTime = endTime, startTime
 
-        start = int(time.mktime(startTime.timetuple()) * 1000)
-        end = int(time.mktime(endTime.timetuple()) * 1000)
+        start = int(time.mktime(startTime.timetuple()))
+        end = int(time.mktime(endTime.timetuple()))
 
-        filePath = ""
+        dirPath = self._get_host_path(hostname, clusterName)
 
-        if clusterName is None:
-            filePath = path.join(self.rrd_rootdir, hostname, metricName + ".rrd")
+        metricFileName = ""
+        if instance is not None:
+            metricFileName = ".".join([instance, metricName])
         else:
-            filePath = path.join(self.rrd_rootdir, clusterName, hostname, metricName + ".rrd")
+            metricFileName = metricName
+        metricFileName = ".".join([metricFileName, "rrd"])
 
+        filePath = path.join(dirPath, metricFileName)
+
+        if not path.exists(filePath):
+            raise Exception("File for stat '%s' not exists: %s" % (metricName, filePath))
 
         return self._fetch_data(filePath, start, end)
 
@@ -75,11 +75,62 @@ class RrdWrapper:
         :rtype: Dict
         """
 
+        print rrdObject
+
         if not path.exists(rrdObject):
-            raise Exception("File not exists %s" % rrdObject)
+            raise Exception("File not exists: %s" % rrdObject)
 
-        return rrdtool.fetch(rrdObject, "AVERAGE", "--start", startTime, "--end", endTime)
+        print "%s - %s" % (startTime, endTime)
 
-    def get_info(self, rrdObject):
+        return rrdtool.fetch(rrdObject, "AVERAGE", "--start", str(startTime), "--end", str(endTime))
+
+    def get_instances_names(self, clusterName = "Openstack"):
+
+        clusterPath = path.join(self.rrd_rootdir, clusterName)
+        hostsNames = filter (lambda hostname: hostname != "__SummaryInfo__" ,os.listdir(clusterPath))
+
+        result = dict()
+
+        for hostname in hostsNames:
+            result[hostname] = self._get_instances_names(path.join(clusterPath, hostname))
+
+        return result
+
+
+    def get_instance_stats_names(self, instanceName, hostname, clusterName = "Openstack"):
+        hostPath = self._get_host_path(hostname, clusterName)
+
+        instance_stats = filter (lambda filename: filename.startswith(instanceName), os.listdir(hostPath))
+
+        instance_stats_names = [x.split('.')[1] for x in instance_stats]
+        return instance_stats_names
+
+
+    def get_hosts_names(self, clusterName = "Openstack"):
+
+        clusterPath = path.join(self.rrd_rootdir, clusterName)
+        hostsNames = filter (lambda hostname: hostname != "__SummaryInfo__" ,os.listdir(clusterPath))
+
+        return hostsNames
+
+
+    def get_host_stats_names(self, hostname, clusterName = "Openstack"):
+
+        hostPath = self._get_host_path(hostname, clusterName)
+        host_stats = filter (lambda filename: not filename.startswith("instance"), os.listdir(hostPath))
+
+        host_stats_names = [x.split('.')[0] for x in host_stats]
+        return host_stats_names
+
+
+    def _get_host_path(self, hostname, clusterName):
+        return path.join(self.rrd_rootdir, clusterName, hostname)
+
+
+    def _get_instances_names(self, root_path):
+        instances = filter(lambda file: file.endswith(".rrd") and file.startswith("instance"),os.listdir(root_path))
+        return set([instance.split('.')[0] for instance in instances])
+
+    def get_info(self, rrdObject, clusterName = "Openstack"):
         #TODO: translate into human-redable output.
         return rrdtool.info(rrdObject)
