@@ -1,7 +1,7 @@
 __author__ = 'michal'
 
 from ceilometer.openstack.common import log
-from novastats.structures.host import Host
+from structures.host import Host
 
 
 LOG = log.getLogger(__name__)

@@ -26,7 +26,7 @@ from nova.openstack.common import context
 from ceilometer.ganglia.rpcapi import HealthMonitorNodeAPI
 from algorithms.simple import SimpleBackpackAlgorithm
 from rrd.rrd import RrdWrapper
-from novastats.structures.host import Host
+from structures.host import Host
 
 from rpcapi import HealthMonitorAPI
 
