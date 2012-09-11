@@ -1,12 +1,25 @@
 __author__ = 'michal'
 
-from novastats.rrd import rrd
+from ceilometer.openstack.common import log
+from novastats.structures.host import Host
+
+
+LOG = log.getLogger(__name__)
 
 W1, W2, W3 = 1, 1, 1
 
 class Vm(object):
 
-    def __init__(self, name, startDate, endDate):
+    def __init__(self, rrdWrapper, name, hostName, startDate, endDate):
+
+        cpu_util = rrdWrapper(startDate, endDate, "cpu_util", name, hostName)
+        cpu_num = rrdWrapper(startDate, endDate, "cpu_num", name, hostName)
+        cpu_speed = rrdWrapper(startDate, endDate, "cpu_speed", name, hostName)
+        pckts_in = rrdWrapper(startDate, endDate, "pckts_in", name, hostName)
+        pckts_out = rrdWrapper(startDate, endDate, "pckts_out", name, hostName)
+        mem_declared = rrdWrapper(startDate, endDate, "mem_declared", name, hostName)
+
+        LOG.info("cpu_util %s cpu_num %s cpu_speed %s pckts_in %s pckts_out %s mem_declared %", cpu_util, cpu_num, cpu_speed, pckts_in, pckts_out, mem_declared)
 
         self._cpu_util = 0
         self._cpu_num = 0

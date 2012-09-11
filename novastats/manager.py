@@ -26,6 +26,7 @@ from nova.openstack.common import context
 from ceilometer.ganglia.rpcapi import HealthMonitorNodeAPI
 from algorithms.simple import SimpleBackpackAlgorithm
 from rrd.rrd import RrdWrapper
+from novastats.structures.host import Host
 
 from rpcapi import HealthMonitorAPI
 
@@ -52,6 +53,22 @@ class HealthMonitorManager(manager.Manager):
     # RPC API Implementation -------------------------------------------------------------------------------------------
     def raise_alert(self, ctx=None, alert=None):
         LOG.info(alert)
+
+        if not self.local_storage:
+            self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
+
+        endTime = datetime.datetime.now()
+        startTime = endTime - datetime.timedelta(hours=1)
+
+        hostNames = self.local_storage.get_hosts_names()
+        instanceNames = self.local_storage.get_instances_names()
+
+        hosts = []
+
+        for hostName in hostNames:
+            LOG.info("collection info from host %s", hostName)
+            hosts.append(Host(self.local_storage,instanceNames, hostName, startTime, endTime))
+
 #        print alert
     #-------------------------------------------------------------------------------------------------------------------
 
