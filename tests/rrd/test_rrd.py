@@ -144,7 +144,4 @@ class TestRrdWrapper(test.TestCase):
 #            self.assertTrue(hostname in hostnames)
 
 
-1346943600000
-1346943611000
-
 

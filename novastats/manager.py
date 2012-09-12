@@ -1,5 +1,4 @@
 # -*- encoding: utf-8 -*-
-from collections import namedtuple
 
 __docformat__ = 'restructuredtext en'
 
@@ -11,6 +10,8 @@ import signal
 import sys
 import time
 import datetime
+from collections import namedtuple
+import threading
 
 import nova.scheduler
 from nova import context
@@ -50,25 +51,30 @@ class HealthMonitorManager(manager.Manager):
 #        print "HelloMgr"
 ##        self.topic = topic
 
+
+    lock = threading.RLock()
+
     # RPC API Implementation -------------------------------------------------------------------------------------------
     def raise_alert(self, ctx=None, alert=None):
         LOG.info(alert)
 
-        endTime = datetime.datetime.now()
-        startTime = endTime - datetime.timedelta(hours=1)
+        with self.lock:
+            if self.STARTED:
+                # Drop alert, algorithm is running.
+                # TODO: Maybe alerts should be added to cyclic buffer?
+                return
+            else:
+                self.STARTED = True
 
-        hostNames = self.local_storage.get_hosts_names()
-        instanceNames = self.local_storage.get_instances_names()
+        try:
+            self.prepare_resource_allocation_algorithm_input(alert)
+        except Exception as err:
+            print err
+            LOG.error(err)
 
-        hosts = []
+        with self.lock:
+            self.STARTED = False
 
-        for hostName in hostNames:
-            hosts.append(Host(self.local_storage,instanceNames, hostName, startTime, endTime))
-            
-	for host in hosts:
-	   LOG.inf("%s", host.getMetrics())
-
-#        print alert
     #-------------------------------------------------------------------------------------------------------------------
 
 
@@ -82,7 +88,7 @@ class HealthMonitorManager(manager.Manager):
 
         self._init_monitors_connections()
 
-	self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
+        self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
 #        self._init_scheduler()
 
 #        self._test_rpc_call()
@@ -127,21 +133,42 @@ class HealthMonitorManager(manager.Manager):
         # Consume from all consumers in a thread
         self.conn.consume_in_thread()
 
-
-
-    def prepare_resource_allocation_algorithm_input(self, hostname, vm_name, resource):
+    def prepare_resource_allocation_algorithm_input(self, alert):
         """
             Hostname is virtual machine's hostname (name)
-        :param hostname: String
-        :param resource: String
         :return:
         """
 
-        virtualMachines = self.get_virtual_machines_locations()
-        collectedData = self.collect_data(hostname, vm_name, resource)
-        physicalNodes = self.get_physical_nodes_resources_utilization()
+        # collect Hosts and VMs data
+        endTime = datetime.datetime.now()
+        startTime = endTime - datetime.timedelta(hours=6)
 
-        input_data_set = dict(resources_history=collectedData, virtual_machines=virtualMachines, physical_nodes=physicalNodes)
+        hostNames = self.local_storage.get_hosts_names()
+        instances = self.local_storage.get_instances_names() # From RRD files
+
+        hosts = []
+        virtualMachines = []
+
+        for hostName in hostNames:
+
+#            instances = self.db.instance_get_all_by_host(self.ctx, hostName) # From DB
+            host = Host(self.local_storage, instances, hostName, startTime, endTime)
+            hosts.append(host)
+
+            vms = host._vms
+            virtualMachines.extend(vms)
+
+        for host in hosts:
+            LOG.inf("%s", host.getMetrics())
+
+
+#        collectedData = self.collect_data(hostname, vm_name, resource)
+#        physicalNodes = self.get_physical_nodes_resources_utilization()
+
+#        input_data_set = dict(resources_history=collectedData, virtual_machines=virtualMachines, physical_nodes=physicalNodes)
+
+        InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
+        input_data_set = InputData(Hosts=hosts, VirtualMachines=virtualMachines, Alert=alert)
 
         migrationPlans = self.migration_algorithm.create_migration_plans(input_data_set)
 
@@ -177,9 +204,8 @@ class HealthMonitorManager(manager.Manager):
                 migration_status = self.scheduler_rpc_api.live_migration(ctxt=ctx,
                         block_migration=self.migration_settings.block_migration,
                         disk_over_commit=self.migration_settings.disk_over_commit,
-                        instance_id=instance.id,
-                        dest=instance.dest,
-                        topic = FLAGS.compute_topic)
+                        instance=instance,
+                        dest=instance.dest)
 
         except:
             raise

@@ -11,7 +11,8 @@ class AlgorithmBase(object):
 
     @abc.abstractmethod
     def execute_algorithm(self, input_data_set):
-    #        input_data_set.resources_history
-    #        input_data_set.virtual_machines
-    #        input_data_set.physical_nodes
+        pass
+
+    @abc.abstractmethod
+    def create_migration_plans(self, input_data_set):
         pass

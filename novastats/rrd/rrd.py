@@ -7,8 +7,17 @@ import os
 from os import path
 import datetime
 import time
+from collections import namedtuple
 
-class RrdWrapper:
+class RrdData(object):
+
+    def __init__(self, info, additional, series):
+        self.Info = info
+        self.Additional = additional
+        self.Series = series
+
+
+class RrdWrapper(object):
 
     cluster_name = ""
 
@@ -63,7 +72,6 @@ class RrdWrapper:
 
         return self._fetch_data(filePath, start, end)
 
-
     def _fetch_data(self, rrdObject, startTime, endTime):
         """ Fetch data from RRD archive for given period of time.
 
@@ -82,7 +90,9 @@ class RrdWrapper:
 
         print "%s - %s" % (startTime, endTime)
 
-        return rrdtool.fetch(rrdObject, "AVERAGE", "--start", str(startTime), "--end", str(endTime))
+        rrd_data = rrdtool.fetch(rrdObject, "AVERAGE", "--start", str(startTime), "--end", str(endTime))
+
+        return RrdData(info=rrd_data[0], additional=rrd_data[1], series=rrd_data[2])
 
     def get_instances_names(self, clusterName = "Openstack"):
 
