@@ -44,7 +44,7 @@ class HealthMonitorManager(manager.Manager):
     BASE_RPC_API_VERSION = '1.0'
     RPC_API_VERSION = '1.0'
 
-    RRD_ROOT_DIR = ""
+    RRD_ROOT_DIR = "/home/stack/ganglia"
 
 #    def __init__(self, topic=None):
 #        print "HelloMgr"
@@ -53,9 +53,6 @@ class HealthMonitorManager(manager.Manager):
     # RPC API Implementation -------------------------------------------------------------------------------------------
     def raise_alert(self, ctx=None, alert=None):
         LOG.info(alert)
-
-        if not self.local_storage:
-            self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
 
         endTime = datetime.datetime.now()
         startTime = endTime - datetime.timedelta(hours=1)
@@ -66,8 +63,10 @@ class HealthMonitorManager(manager.Manager):
         hosts = []
 
         for hostName in hostNames:
-            LOG.info("collection info from host %s", hostName)
             hosts.append(Host(self.local_storage,instanceNames, hostName, startTime, endTime))
+            
+	for host in hosts:
+	   LOG.inf("%s", host.getMetrics())
 
 #        print alert
     #-------------------------------------------------------------------------------------------------------------------
@@ -82,6 +81,8 @@ class HealthMonitorManager(manager.Manager):
         self.migration_algorithm = SimpleBackpackAlgorithm()
 
         self._init_monitors_connections()
+
+	self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
 #        self._init_scheduler()
 
 #        self._test_rpc_call()

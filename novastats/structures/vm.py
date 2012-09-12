@@ -1,8 +1,6 @@
 __author__ = 'michal'
 
 from ceilometer.openstack.common import log
-from structures.host import Host
-
 
 LOG = log.getLogger(__name__)
 
@@ -10,31 +8,30 @@ W1, W2, W3 = 1, 1, 1
 
 class Vm(object):
 
-    def __init__(self, rrdWrapper, name, hostName, startDate, endDate):
+    def __init__(self, rrdWrapper, name, hostName, cpu_speed, startDate, endDate):
 
-        cpu_util = rrdWrapper(startDate, endDate, "cpu_util", name, hostName)
-        cpu_num = rrdWrapper(startDate, endDate, "cpu_num", name, hostName)
-        cpu_speed = rrdWrapper(startDate, endDate, "cpu_speed", name, hostName)
-        pckts_in = rrdWrapper(startDate, endDate, "pckts_in", name, hostName)
-        pckts_out = rrdWrapper(startDate, endDate, "pckts_out", name, hostName)
-        mem_declared = rrdWrapper(startDate, endDate, "mem_declared", name, hostName)
+        cpu_util = rrdWrapper.query(startDate, endDate, "vcpu_util", name, hostName)[2][1][0]
+        cpu_num = rrdWrapper.query(startDate, endDate, "vcpu_num", name, hostName)[2][1][0]
+        pkts_in = rrdWrapper.query(startDate, endDate, "vpkts_in", name, hostName)[2][1][0]
+        pkts_out = rrdWrapper.query(startDate, endDate, "vpkts_out", name, hostName)[2][1][0]
+        mem_declared = rrdWrapper.query(startDate, endDate, "vmem_total", name, hostName)[2][1][0]
 
-        LOG.info("cpu_util %s cpu_num %s cpu_speed %s pckts_in %s pckts_out %s mem_declared %", cpu_util, cpu_num, cpu_speed, pckts_in, pckts_out, mem_declared)
+        LOG.info("cpu_util %s cpu_num %s pckts_in %s pckts_out %s mem_declared %s", cpu_util, cpu_num, pkts_in, pkts_out, mem_declared)
 
-        self._cpu_util = 0
-        self._cpu_num = 0
-        self._cpu_speed = 0
-        self._pckts_in = 0
-        self._pckts_out = 0
-        self._mem_declared = 0
+        self._cpu_util = cpu_util / 100
+        self._cpu_num = cpu_num
+        self._pkts_in = pkts_in
+        self._pkts_out = pkts_out
+        self._mem_declared = mem_declared
+	self._cpu_speed = cpu_speed
         self._mem = 0
 
 
     def getCValue(self):
-        return self._cpu_num * self._cpu_speed * self._cpu_util / 100
+        return self._cpu_num * self._cpu_speed * self._cpu_util
 
     def getNValue(self):
-        return self._pckts_in + self._pckts_out
+        return self._pkts_in + self._pkts_out
 
     def getMValue(self):
         return self._mem
@@ -47,13 +44,13 @@ class Vm(object):
 
 
     def getC (self, host):
-         return self.getCValue() / host._cpu * 100
+         return self.getCValue() / host._cpu
 
     def getN(self, host):
-        return self.getNValue() / host._bandwidth * 100
+        return self.getNValue() / host._bandwidth
 
     def getM(self, host):
-        return self.getMValue() / host._mem * 100
+        return self.getMValue() / host._mem
 
     def getValues(self):
 

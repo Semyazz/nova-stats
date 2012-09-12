@@ -1,7 +1,7 @@
 __author__ = 'michal'
 
 from ceilometer.openstack.common import log
-from structures.vm import Vm
+from vm import Vm
 
 
 LOG = log.getLogger(__name__)
@@ -10,31 +10,30 @@ class Host(object):
 
     def __init__(self, rrdWrapper, instances, name, startDate, endDate):
 
-        cpu_system = rrdWrapper(startDate, endDate, "cpu_system", name, hostName)
-        cpu_user = rrdWrapper(startDate, endDate, "cpu_user", name, hostName)
-        cpu_num = rrdWrapper(startDate, endDate, "cpu_num", name, hostName)
-        cpu_speed = rrdWrapper(startDate, endDate, "cpu_speed", name, hostName)
-        mem = rrdWrapper(startDate, endDate, "mem", name, hostName)
-        mem_util = rrdWrapper(startDate, endDate, "mem_util", name, hostName)
+        cpu_system = rrdWrapper.query(startDate, endDate, "cpu_system", hostname = name)[2][1][0]
+        cpu_user = rrdWrapper.query(startDate, endDate, "cpu_user", hostname = name)[2][1][0]
+        cpu_num = rrdWrapper.query(startDate, endDate, "cpu_num", hostname = name)[2][1][0]
+	cpu_speed = rrdWrapper.query(startDate, endDate, "cpu_speed", hostname = name)[2][1][0]
+        mem = rrdWrapper.query(startDate, endDate, "mem_total", hostname = name)[2][1][0]
+        mem_free = rrdWrapper.query(startDate, endDate, "mem_free", hostname = name)[2][1][0]
 
-        LOG.info("cpu_system %s cpu_user %s cpu_num %s cpu_speed %s mem %s mem_util %s", cpu_system, cpu_user, cpu_num, cpu_speed, mem, mem_util)
+        LOG.info("cpu_system %s cpu_user %s cpu_num %s cpu_speed %s mem %s mem_free %s", cpu_system, cpu_user, cpu_num, cpu_speed, mem, mem_free)
 
         self._bandwidth = 10480
-        self._cpu_util = 0
-        self._cpu_num = 0
-        self._cpu_speed = 0
-        self._mem = 0
-        self._mem_util = 0
+        self._cpu_util = cpu_user + cpu_num
+        self._cpu_num = cpu_num
+        self._cpu_speed = cpu_speed
+        self._mem = mem
+        self._mem_util = 1 - mem_free / mem
 
-        self._cpu = self._cpu_num * self._cpu_speed * self._cpu_util / 100
+        self._cpu = self._cpu_speed * cpu_num
 
         instanceNames = instances[name]
 
         self._vms = []
 
         for instance in instanceNames:
-            LOG.info("collecting data from instance %s", instance)
-            self._vms.append(Vm(rrdWrapper,instance,name,startDate, endDate))
+            self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed,startDate, endDate))
 
         mWeightSum = self.getMWeightSum()
 
@@ -65,8 +64,10 @@ class Host(object):
             nValue += vmValue["N"]
             mValue += vmValue["M"]
 
+	LOG.error("c value %s", cValue)
+
         return {
-            "C" : cValue / self._cpu * 100,
-            "N" : nValue / self._bandwidth * 100,
-            "M" : mValue / self._mem * 100,
+            "C" : cValue / self._cpu,
+            "N" : nValue / self._bandwidth,
+            "M" : mValue / self._mem,
         }
