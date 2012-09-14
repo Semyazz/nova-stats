@@ -46,7 +46,6 @@ class AntColonyAlgorithm(AlgorithmBase):
 
         C = dict()
         I = dict()
-        Sbest = dict()
 
         Binit = dict() # TMP used
 
@@ -58,12 +57,10 @@ class AntColonyAlgorithm(AlgorithmBase):
         for item in Items:
             assert isinstance(item, Vm)
             I[item] = self.Capacity(memory=item._mem_declared, network=item._bandwidth, cpu=item._cpu_util)
-            Sbest[item] = [{bin: 0} for bin in Bins]
 
         n = len(Bins)
         m = len(Items)
 
-        Zeros2DArray = self._initZeroS(m, n) # TMP
         Zeros2DDict = {item : {bin: 0 for bin in Bins} for item in Items}
 
         S = dict()
@@ -74,57 +71,86 @@ class AntColonyAlgorithm(AlgorithmBase):
             for item in Items:
                 tauItem[item] = tauMax
             tau[bin] = tauItem
+        #eta = dict()
+        #ETA computed in function
 
-        eta = dict()
-
-#        Sbest = [[0 for _ in range(n)] for _ in range(m)]
-
+        # Solution dictionary dict<VirtualMachine, dict<Host, int>> where int => 0|1.
+        Sbest = Zeros2DDict.copy()
 
         assert len(Sbest) == m
         assert len(Sbest[Items[0]]) == n
         # Solution matrix
 
+        # Ant
         for q in range(0, nCycles-1):
             for a in range(0, nAnts):
+
+                # Host's used resources in terms of Capacity class [Memory, Network, CPU]
+                # Increased during algorithm
+                # Binit == Initialization Capacity(Memory=0, Network=0, CPU=0)
                 B = Binit.copy()
+
+                # List of items to schedule.
                 IS = list(Items)
-                v = Bins.__iter__().next()
+
+                # Ant's solution. type(S[a]) == type(Sbest)
+                # Ant's are numbered 0..nAnts.
                 S[a] = Zeros2DDict.copy()
 
                 assert len(S[a]) == m
                 assert len(S[a][Items[0]]) == n
 
+                iterator = Bins.__iter__()
+                # First Bin (Host)
+                v = iterator.next()
                 try:
                     while len(IS):
-                        N[v] = self.selectItems(C[v], B[v], IS, I)
-                        etas = self.computeEta(C[v], B[v], I)
-                        if len(N[v]):
 
-                            # Choose item stochastically
+                        # Items (VirtualMachines) which can be put into bin
+                        N[v] = self.selectItems(C[v], B[v], IS, I)
+
+                        if len(N[v]):
+                            etas = self.computeEta(C[v], B[v], I)
+
+                            # Compute probabilities for each Item (VirtualMachine).
+                            # type(p) == dict<VirtualMachine, float>
                             p = self.computeProbabilities(N[v], tau[v], etas, alfa, beta)
-                            assert sum(p.values()) == 1
+
+                            # Total probability ~== 1.0
+                            assert  abs(sum(p.values()) - 1.0) < 1e-6, "probability sum: %s" % (sum(p.values()))
+
+                            # Weighted random choose
+                            # TODO: There are faster algorithms to do that than that implemented in chooseItemStochastically
+                            # i == VirtualMachine which will be put into bin
                             i = self.chooseItemStochastically(p)
+
                             assert i in N[v]
 
+                            # Put Instance i into Bin v.
                             S[a][i][v] = 1
 
+                            # Remove instance from instances to schedule
                             IS.remove(i)
+
+                            # Update Host's used resources
                             B[v] = self._sumCapacityVectors(B[v], I[i])
                         else:
-                            v = Bins.__iter__().next()
+                            guard = v
+                            v = iterator.next()
+                            assert guard is not v
 
                 except StopIteration as stop:
                     pass
 
 
+            # Update best solution. Choose best one from ants' solutions
+            # Compute deltaTau
             if q == 0:
-                Sbest, deltaTau = self.saveBest(S, Sbest, m, n)
-                print "q == 0"
+                Sbest, deltaTau = self.saveBestOrIsGlobalBest(S, Sbest)
             else:
-                Sbest, deltaTau = self.isGlobalBest(S, Sbest, m, n)
+                Sbest, deltaTau = self.saveBestOrIsGlobalBest(S, Sbest)
 
             # Compute tauMin and tauMax
-
             for bin in Bins:
                 for item in Items:
                     tau[bin][item] = (1 - ro) * tau[bin][item] + deltaTau[item][bin]
@@ -133,7 +159,15 @@ class AntColonyAlgorithm(AlgorithmBase):
                     if tau[bin][item] < tauMin:
                         tau[bin][item] = tauMin
 
-        print Sbest
+        self.print_result(Sbest)
+
+
+    def print_result(self, Sbest):
+
+        for item, bins in Sbest.items():
+            for bin, value in bins.items():
+                if value == 1:
+                    print "Instance %s@%s" % (item.InstanceName, bin.Hostname)
 
 
     def computeEta(self, c, b, I):
@@ -145,6 +179,9 @@ class AntColonyAlgorithm(AlgorithmBase):
         return etas
 
     def _l1norm(self, v):
+        """
+            Compute L1-Norm. Simple just sum whole vector
+        """
 
         assert isinstance(v, self.Capacity)
 
@@ -153,11 +190,7 @@ class AntColonyAlgorithm(AlgorithmBase):
     def computeDeltaTau(self, S, min_used_bins):
         deltaTau = dict()
 
-        objCounter = 0
-        expected = len(S) * len(S[S.keys()[0]])
-
         for item, bins in S.items():
-            assert len(bins) == 3
             deltaTau[item] = dict()
             for bin, value in bins.items():
                 if value == 1:
@@ -180,14 +213,13 @@ class AntColonyAlgorithm(AlgorithmBase):
 
         return sum(used_bins_number.values())
 
-
     def saveBestOrIsGlobalBest(self, S, Sbest):
 
-        if not Sbest:
+        min_used_bins = AntColonyAlgorithm.usedBins(Sbest)
+
+        if min_used_bins == 0:
             print "Select first"
             Sbest = S[0]
-
-        min_used_bins = AntColonyAlgorithm.usedBins(Sbest)
 
         for key, Sant in S.items():
             used_bins_number = AntColonyAlgorithm.usedBins(Sant)

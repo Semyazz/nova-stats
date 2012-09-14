@@ -15,7 +15,7 @@ class Vm(object):
     def __init__(self, rrdWrapper, name, hostName, cpu_speed, startDate, endDate):
 
         self.Hostname = hostName
-
+        self.InstanceName = name
 #        cpu_util = rrdWrapper.query(startDate, endDate, "vcpu_util", name, hostName)[2][1][0]
 #        cpu_num = rrdWrapper.query(startDate, endDate, "vcpu_num", name, hostName)[2][1][0]
 #        pkts_in = rrdWrapper.query(startDate, endDate, "vpkts_in", name, hostName)[2][1][0]

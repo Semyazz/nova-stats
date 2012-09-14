@@ -14,6 +14,7 @@ class Host(object):
 
     def __init__(self, rrdWrapper, instances, name, startDate, endDate):
 
+        self.Hostname = name
 #        cpu_system = rrdWrapper.query(startDate, endDate, "cpu_system", hostname = name)[2][1][0]
 #        cpu_user = rrdWrapper.query(startDate, endDate, "cpu_user", hostname = name)[2][1][0]
 #        cpu_num = rrdWrapper.query(startDate, endDate, "cpu_num", hostname = name)[2][1][0]

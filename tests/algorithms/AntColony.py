@@ -19,7 +19,6 @@ class TestAntColony(test.TestCase):
 
     def test_algorithm(self):
 
-
         ant = AntColonyAlgorithm()
 
         input_data_set = namedtuple('InputData', 'Hosts VirtualMachines Alert')
@@ -41,14 +40,21 @@ class TestAntColony(test.TestCase):
         maxBandwith = 10000.0
 
         host1 = Host(1.0, 1.0)
+        host1.Hostname = "host1"
         host2 = Host(1.0, 1.0)
-        host3 = Host(1.0, 1.0)
+        host2.Hostname = "host2"
 
-        vm1 = Vm(256.0/maxMem, 1000.0/maxBandwith, 30.0/100.0)
-        vm2 = Vm(256.0/maxMem, 1000.0/maxBandwith, 30.0/100.0)
+        vm1 = Vm(512.0/maxMem, 1000.0/maxBandwith, 30.0/100.0)
+        vm1.InstanceName = "instance-00001"
+        vm2 = Vm(512.0/maxMem, 1000.0/maxBandwith, 30.0/100.0)
+        vm2.InstanceName = "instance-00002"
+        vm3 = Vm(1024.0/maxMem, 1000.0/maxBandwith, 30.0/100.0)
+        vm3.InstanceName = "instance-00003"
+        vm4 = Vm(512.0/maxMem, 1000.0/maxBandwith, 30.0/100.0)
+        vm4.InstanceName = "instance-00004"
 
-        input_data_set.Hosts = [host1, host2, host3]
-        input_data_set.VirtualMachines = [vm1, vm2]
+        input_data_set.Hosts = [host1, host2]
+        input_data_set.VirtualMachines = [vm1, vm2, vm3, vm4]
 
         ant.execute_algorithm(input_data_set)
 
