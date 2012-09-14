@@ -1,0 +1,81 @@
+__author__ = 'semy'
+
+from novastats.algorithms.AntColony import AntColonyAlgorithm
+from nova import test
+from collections import namedtuple
+
+from novastats.structures.host import Host
+from novastats.structures.vm import Vm
+
+import mox
+
+class TestAntColony(test.TestCase):
+
+    def setUp(self):
+        super(TestAntColony, self).setUp()
+        self.hostMocker = mox.Mox()
+        self.vmMocker = mox.Mox()
+
+
+    def test_algorithm(self):
+
+
+        ant = AntColonyAlgorithm()
+
+        input_data_set = namedtuple('InputData', 'Hosts VirtualMachines Alert')
+
+        def host_init(self, memory, bandwidth):
+            self._mem = memory
+            self._bandwidth = bandwidth
+
+        def vm_init(self, mem_declared, bandwitch, cpu_util):
+            self._mem_declared = mem_declared
+            self._bandwidth = bandwitch
+            self._cpu_util = cpu_util
+
+        Host.__init__ = host_init
+        Vm.__init__ = vm_init
+
+        maxMem = 1024.0
+        maxCPU = 100.0
+        maxBandwith = 10000.0
+
+        host1 = Host(1.0, 1.0)
+        host2 = Host(1.0, 1.0)
+        host3 = Host(1.0, 1.0)
+
+        vm1 = Vm(256.0/maxMem, 1000.0/maxBandwith, 30.0/100.0)
+        vm2 = Vm(256.0/maxMem, 1000.0/maxBandwith, 30.0/100.0)
+
+        input_data_set.Hosts = [host1, host2, host3]
+        input_data_set.VirtualMachines = [vm1, vm2]
+
+        ant.execute_algorithm(input_data_set)
+
+
+
+    def test_mocking(self):
+
+        def host_init(self, memory, bandwidth):
+            self._mem = memory
+            self._bandwidth = bandwidth
+
+        def vm_init(self, mem_declared, bandwitch, cpu_util):
+            self._mem_declared = mem_declared
+            self._bandwidth = bandwitch
+            self._cpu_util = cpu_util
+
+        Host.__init__ = host_init
+        Vm.__init__ = vm_init
+
+        host1 = Host(1024, 10000)
+        host2 = Host(1024, 10000)
+
+        vm1 = Vm(256, 1000, 30)
+        vm2 = Vm(256, 1000, 30)
+
+        assert isinstance(host1, Host)
+        assert isinstance(host2, Host)
+
+        assert isinstance(vm1, Vm)
+        assert isinstance(vm2, Vm)
