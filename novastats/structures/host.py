@@ -2,9 +2,7 @@ __author__ = 'michal'
 
 from ceilometer.openstack.common import log
 from vm import Vm
-from rrd import rrd
-import datetime
-import time
+from novastats.rrd import rrd
 
 LOG = log.getLogger(__name__)
 

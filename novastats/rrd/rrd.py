@@ -188,8 +188,8 @@ class RrdWrapper(object):
         return rrdtool.info(rrdObject)
 
 
-def getWeightedAverageData(self, rrdWrapper, endTime, metric, host, instance=None):
-
+def getWeightedAverageData(rrdWrapper, endTime, metric, host, instance=None):
+    
     startTime = endTime - datetime.timedelta(minutes=5)
 
     _5minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
@@ -211,7 +211,7 @@ def getWeightedAverageData(self, rrdWrapper, endTime, metric, host, instance=Non
            0.2 * _15minuteData.Average + \
            0.1 * _30minuteData.Average
 
-def getSingleValue(self, rrdWrapper, time, metric, host, instance=None):
+def getSingleValue(rrdWrapper, endTime, metric, host, instance=None):
 
-    startDate = endDate - datetime.timedelta(seconds=1)
-    return rrdWrapper.query(startDate, time, metric, host, instance).getLastSingleValue()
+    startTime = endTime - datetime.timedelta(minutes=1)
+    return rrdWrapper.query(startTime, endTime, metric, instance, host).getLastSingleValue()
