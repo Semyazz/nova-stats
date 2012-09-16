@@ -186,3 +186,32 @@ class RrdWrapper(object):
     def get_info(self, rrdObject, clusterName = "Openstack"):
         #TODO: translate into human-redable output.
         return rrdtool.info(rrdObject)
+
+
+def getWeightedAverageData(self, rrdWrapper, endTime, metric, host, instance=None):
+
+    startTime = endTime - datetime.timedelta(minutes=5)
+
+    _5minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
+
+    startTime = endTime - datetime.timedelta(minutes=10)
+
+    _10minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
+
+    startTime = endTime - datetime.timedelta(minutes=15)
+
+    _15minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
+
+    startTime = endTime - datetime.timedelta(minutes=30)
+
+    _30minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
+
+    return 0.4 * _5minuteData.Average + \
+           0.3 * _10minuteData.Average + \
+           0.2 * _15minuteData.Average + \
+           0.1 * _30minuteData.Average
+
+def getSingleValue(self, rrdWrapper, time, metric, host, instance=None):
+
+    startDate = endDate - datetime.timedelta(seconds=1)
+    return rrdWrapper.query(startDate, time, metric, host, instance).getLastSingleValue()

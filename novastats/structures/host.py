@@ -2,7 +2,9 @@ __author__ = 'michal'
 
 from ceilometer.openstack.common import log
 from vm import Vm
-
+from rrd import rrd
+import datetime
+import time
 
 LOG = log.getLogger(__name__)
 
@@ -12,16 +14,16 @@ class Host(object):
 
         return list[len(list) - 1]
 
-    def __init__(self, rrdWrapper, instances, name, startDate, endDate):
+    def __init__(self, rrdWrapper, instances, name, endTime):
 
         self.Hostname = name
 
-        cpu_system = rrdWrapper.query(startDate, endDate, "cpu_system", hostname = name).Average
-        cpu_user = rrdWrapper.query(startDate, endDate, "cpu_user", hostname = name).Average
-        cpu_num = rrdWrapper.query(startDate, endDate, "cpu_num", hostname = name).getLastSingleValue()
-        cpu_speed = rrdWrapper.query(startDate, endDate, "cpu_speed", hostname = name).getLastSingleValue()
-        mem = rrdWrapper.query(startDate, endDate, "mem_total", hostname = name).getLastSingleValue()
-        mem_free = rrdWrapper.query(startDate, endDate, "mem_free", hostname = name).Average
+        cpu_system = rrd.getWeightedAverageData(rrdWrapper, endTime, "cpu_system", name)
+        cpu_user = rrd.getWeightedAverageData(rrdWrapper, endTime, "cpu_user", name)
+        cpu_num = rrd.getSingleValue(rrdWrapper, endTime, "cpu_num", name)
+        cpu_speed = rrd.getSingleValue(rrdWrapper, endTime, "cpu_speed", name)
+        mem = rrd.getSingleValue(rrdWrapper, endTime, "mem_total", name)
+        mem_free = rrd.getWeightedAverageData(rrdWrapper, endTime, "mem_free", name)
 
 
         LOG.error("host: %s\t"
@@ -51,13 +53,12 @@ class Host(object):
         self._vms = []
 
         for instance in instances:
-            self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed,startDate, endDate))
+            self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed, endTime))
 
         mWeightSum = self.getMWeightSum()
 
         for vmi in self._vms:
             vmi.setMem(self, mWeightSum)
-
 
     def getMWeightSum(self):
         m_weight_sum = 0

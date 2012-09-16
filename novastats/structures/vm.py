@@ -1,6 +1,7 @@
 __author__ = 'michal'
 
 from ceilometer.openstack.common import log
+from rrd import rrd
 
 LOG = log.getLogger(__name__)
 
@@ -10,21 +11,16 @@ class Vm(object):
 
 
 
-    def __init__(self, rrdWrapper, name, hostName, cpu_speed, startDate, endDate):
+    def __init__(self, rrdWrapper, instanceName, hostName, cpu_speed, endTime):
 
         self.Hostname = hostName
-        self.InstanceName = name
-#        cpu_util = rrdWrapper.query(startDate, endDate, "vcpu_util", name, hostName)[2][1][0]
-#        cpu_num = rrdWrapper.query(startDate, endDate, "vcpu_num", name, hostName)[2][1][0]
-#        pkts_in = rrdWrapper.query(startDate, endDate, "vpkts_in", name, hostName)[2][1][0]
-#        pkts_out = rrdWrapper.query(startDate, endDate, "vpkts_out", name, hostName)[2][1][0]
-#        mem_declared = rrdWrapper.query(startDate, endDate, "vmem_total", name, hostName)[2][1][0]
+        self.InstanceName = instanceName
 
-        cpu_util = rrdWrapper.query(startDate, endDate, "vcpu_util", name, hostName).Average
-        cpu_num = rrdWrapper.query(startDate, endDate, "vcpu_num", name, hostName).getLastSingleValue()
-        pkts_in = rrdWrapper.query(startDate, endDate, "vpkts_in", name, hostName).Average
-        pkts_out = rrdWrapper.query(startDate, endDate, "vpkts_out", name, hostName).Average
-        mem_declared = rrdWrapper.query(startDate, endDate, "vmem_total", name, hostName).getLastSingleValue()
+        cpu_util = rrd.getWeightedAverageData(rrdWrapper, endTime, "vcpu_util", hostName, instanceName)
+        cpu_num = rrd.getSingleValue(rrdWrapper, endTime, "vcpu_num", hostName, instanceName)
+        pkts_in = rrd.getWeightedAverageData(rrdWrapper, endTime, "vpkts_in", hostName, instanceName)
+        pkts_out = rrd.getWeightedAverageData(rrdWrapper, endTime, "vpkts_out", hostName, instanceName)
+        mem_declared = rrd.getSingleValue(rrdWrapper, endTime, "vmem_total", hostName, instanceName)
 
         LOG.error("vm: %s\t"
                   "cpu_util %s\t"
@@ -32,7 +28,7 @@ class Vm(object):
                   "pckts_in %s\t"
                   "pckts_out %s\t"
                   "mem_declared %s",
-            name,
+            instanceName,
             cpu_util,
             cpu_num,
             pkts_in,
