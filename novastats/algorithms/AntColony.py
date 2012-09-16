@@ -6,6 +6,11 @@ from collections import namedtuple
 from novastats.structures.host import Host
 from novastats.structures.host import Vm
 
+from ceilometer.openstack.common import log as logging
+
+LOG = logging.getLogger(__name__)
+
+
 class AntColonyAlgorithm(AlgorithmBase):
 
 
@@ -51,12 +56,12 @@ class AntColonyAlgorithm(AlgorithmBase):
 
         for bin in Bins:
             assert isinstance(bin, Host)
-            C[bin] = self.Capacity(memory=bin._mem, network=bin._bandwidth, cpu=1)
-            Binit[bin] = self.Capacity(memory=0, network=0, cpu=0)
+            C[bin] = self.Capacity(memory=1.0, network=1.0, cpu=1.0)
+            Binit[bin] = self.Capacity(memory=0.0, network=0.0, cpu=0.0)
 
-        for item in Items:
-            assert isinstance(item, Vm)
-            I[item] = self.Capacity(memory=item._mem_declared, network=item._bandwidth, cpu=item._cpu_util)
+#        for item in Items:
+#            assert isinstance(item, Vm)
+#            I[item] = self.Capacity(memory=item._mem_declared, network=item._bandwidth, cpu=item._cpu_util)
 
         n = len(Bins)
         m = len(Items)
@@ -103,6 +108,9 @@ class AntColonyAlgorithm(AlgorithmBase):
                 iterator = Bins.__iter__()
                 # First Bin (Host)
                 v = iterator.next()
+
+                I = self._get_instances_vectors(v, Items)
+
                 try:
                     while len(IS):
 
@@ -138,6 +146,7 @@ class AntColonyAlgorithm(AlgorithmBase):
                             guard = v
                             v = iterator.next()
                             assert guard is not v
+                            I = self._get_instances_vectors(v, Items)
 
                 except StopIteration as stop:
                     pass
@@ -160,7 +169,22 @@ class AntColonyAlgorithm(AlgorithmBase):
                         tau[bin][item] = tauMin
 
         self.print_result(Sbest)
+        return Sbest
 
+
+    def _get_instances_vectors(self, host, instances):
+
+        I = dict()
+
+        for instance in instances:
+            assert isinstance(instance, Vm)
+            metrics = instance.getMetrics(host)
+            I[instance] = self.Capacity(memory=metrics["M"], network=metrics["N"], cpu=metrics["C"])
+            cap = I[instance]
+            assert isinstance(cap, self.Capacity)
+            LOG.error("I:%s\tCPU:%s\tMem:%s\tNet:%s" % (instance.InstanceName, cap.CPU, cap.Memory, cap.Network))
+
+        return I
 
     def print_result(self, Sbest):
 

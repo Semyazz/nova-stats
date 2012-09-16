@@ -25,7 +25,10 @@ from nova.openstack.common import rpc
 from nova.openstack.common import context
 
 from ceilometer.ganglia.rpcapi import HealthMonitorNodeAPI
-from algorithms.simple import SimpleBackpackAlgorithm
+
+from algorithms.AntColony import AntColonyAlgorithm
+
+
 from rrd.rrd import RrdWrapper
 from structures.host import Host
 
@@ -84,11 +87,12 @@ class HealthMonitorManager(manager.Manager):
         self.ctx = context.get_admin_context()
         self.ctx.read_deleted = "no"
         self.instances = self.db.instance_get_all_by_host(self.ctx, self.host)
-        self.migration_algorithm = SimpleBackpackAlgorithm()
+        self.migration_algorithm = AntColonyAlgorithm()
 
         self._init_monitors_connections()
 
         self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
+        self.STARTED = False
 #        self._init_scheduler()
 
 #        self._test_rpc_call()
@@ -141,7 +145,7 @@ class HealthMonitorManager(manager.Manager):
 
         # collect Hosts and VMs data
         endTime = datetime.datetime.now()
-        startTime = endTime - datetime.timedelta(hours=6)
+        startTime = endTime - datetime.timedelta(minutes=5)
 
         hostNames = self.local_storage.get_hosts_names()
         instances = self.local_storage.get_instances_names() # From RRD files
@@ -151,28 +155,34 @@ class HealthMonitorManager(manager.Manager):
 
         for hostName in hostNames:
 
-#            instances = self.db.instance_get_all_by_host(self.ctx, hostName) # From DB
-            host = Host(self.local_storage, instances, hostName, startTime, endTime)
+            db_instances = self.db.instance_get_all_by_host(self.ctx, hostName) # From DB
+            db_instnaces_names = [instance.name for instance in db_instances]
+
+            host = Host(self.local_storage, db_instnaces_names, hostName, startTime, endTime)
             hosts.append(host)
 
             vms = host._vms
             virtualMachines.extend(vms)
 
         for host in hosts:
-            LOG.inf("%s", host.getMetrics())
+            LOG.error("host %s\t %s", host.Hostname, host.getMetrics())
 
 
 #        collectedData = self.collect_data(hostname, vm_name, resource)
 #        physicalNodes = self.get_physical_nodes_resources_utilization()
 
 #        input_data_set = dict(resources_history=collectedData, virtual_machines=virtualMachines, physical_nodes=physicalNodes)
-
+#
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
         input_data_set = InputData(Hosts=hosts, VirtualMachines=virtualMachines, Alert=alert)
 
+        LOG.error("Start Algorithm")
         migrationPlans = self.migration_algorithm.create_migration_plans(input_data_set)
+        LOG.error("Stop Algorithm")
+        import time
+        time.sleep(100)
 
-        self.execute_plan(migrationPlans)
+#        self.execute_plan(migrationPlans)
 
         pass
 

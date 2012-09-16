@@ -8,6 +8,18 @@ from os import path
 import datetime
 import time
 from collections import namedtuple
+from ceilometer.openstack.common import log
+
+LOG = log.getLogger(__name__)
+
+def get_last(list):
+
+    for i in xrange(len(list) - 1, -1, -1):
+        if list[i][0] is not None:
+            return list[i][0]
+
+    return 0
+
 
 class RrdData(object):
 
@@ -15,6 +27,36 @@ class RrdData(object):
         self.Info = info
         self.Additional = additional
         self.Series = series
+
+        self.__calculateAverage()
+
+
+    def __calculateAverage(self):
+        self.Average = 0
+
+        count = 0
+
+        for item in self.Series:
+            if item[0] is not None:
+                self.Average += item[0]
+                count += 1
+
+        if count > 0:
+            self.Average /= count
+        else:
+            self.Average = 0
+
+    def getSingleValue(self):
+        return self.Series[0][0]
+
+    def getLastSingleValue(self):
+        value = get_last(self.Series)
+
+        if value is not None:
+            return value
+        else:
+            return 0
+
 
 
 class RrdWrapper(object):
@@ -83,12 +125,12 @@ class RrdWrapper(object):
         :rtype: Dict
         """
 
-        print rrdObject
+        #print rrdObject
 
         if not path.exists(rrdObject):
             raise Exception("File not exists: %s" % rrdObject)
 
-        print "%s - %s" % (startTime, endTime)
+        #print "%s - %s" % (startTime, endTime)
 
         rrd_data = rrdtool.fetch(rrdObject, "AVERAGE", "--start", str(startTime), "--end", str(endTime))
 
