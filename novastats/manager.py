@@ -23,6 +23,7 @@ from nova.openstack.common import importutils
 from ceilometer.openstack.common import log as logging
 from nova.openstack.common import rpc
 from nova.openstack.common import context
+from nova.scheduler.rpcapi import SchedulerAPI
 
 from ceilometer.ganglia.rpcapi import HealthMonitorNodeAPI
 
@@ -31,8 +32,12 @@ from algorithms.AntColony import AntColonyAlgorithm
 
 from rrd.rrd import RrdWrapper
 from structures.host import Host
+from algorithms.base import MigrationItem
 
 from rpcapi import HealthMonitorAPI
+
+import nova.db
+from nova.db.sqlalchemy import api as db_api
 
 try:
     import nova.openstack.common.rpc as nova_rpc
@@ -92,8 +97,10 @@ class HealthMonitorManager(manager.Manager):
         self._init_monitors_connections()
 
         self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
+
         self.STARTED = False
-#        self._init_scheduler()
+
+
 
 #        self._test_rpc_call()
 
@@ -117,7 +124,8 @@ class HealthMonitorManager(manager.Manager):
 #   http://stackoverflow.com/questions/11708799/any-way-to-initialize-attributes-properties-during-class-creation-in-python
 
     def _init_scheduler(self):
-        self.scheduler_rpc_api = nova.scheduler.rpcapi.SchedulerAPI()
+
+        self.scheduler_rpc_api = SchedulerAPI()
 
         if self.scheduler_rpc_api is None:
             LOG.error("Scheduler == None")
@@ -182,7 +190,7 @@ class HealthMonitorManager(manager.Manager):
         import time
         time.sleep(100)
 
-#        self.execute_plan(migrationPlans)
+        self.execute_plan(migrationPlans)
 
         pass
 
@@ -190,14 +198,6 @@ class HealthMonitorManager(manager.Manager):
         #TODO
         pass
 
-    def choose_migration_plan(self, plans):
-        #TODO
-        if len(plans) > 0:
-            plans = sorted(plans, key= lambda score : plan.score)
-            plan = plans.reverse().pop()
-            return plan
-        else:
-            raise Exception("There is no migration plan")
 
     def execute_plan(self, migrationPlans):
         """
@@ -206,16 +206,29 @@ class HealthMonitorManager(manager.Manager):
         :return:
         """
         try:
-            self._init_scheduler()
-            plan = self.choose_migration_plan(migrationPlans)
-            ctx = context.get_admin_context()
+            if not self.scheduler_rpc_api:
+                self._init_scheduler()
 
-            for instance in plan.instances:
+            assert isinstance(migrationPlans, list)
+            if migrationPlans:
+                plan = migrationPlans[0]
+            else:
+                LOG.info("There is no migration plans")
+                return
+
+            ctx = context.get_admin_context()
+            for migrationItem in plan:
+                assert isinstance(migrationItem, MigrationItem)
+                if 0:self.db=db_api # Stupid hack for code completion in ide
+
+                instance = self.db.instance_get(self.ctx, migrationItem.instance_id)
+                assert isinstance(instance, nova.db.sqlalchemy.models.Instance)
+
                 migration_status = self.scheduler_rpc_api.live_migration(ctxt=ctx,
                         block_migration=self.migration_settings.block_migration,
                         disk_over_commit=self.migration_settings.disk_over_commit,
                         instance=instance,
-                        dest=instance.dest)
+                        dest=migrationItem.hostname)
 
         except:
             raise
@@ -282,4 +295,31 @@ class HealthMonitorManager(manager.Manager):
 
 
 
+    def test_migration(self, migrationPlans):
+        """
+        Executes migration plan. Migrate VMs to given nodes.
+        :param migrationPlans: list
+        :return:
+        """
 
+        instance_id = ""
+        hostname = ""
+
+        if not self.scheduler_rpc_api:
+            self._init_scheduler()
+
+
+        ctx = context.get_admin_context()
+
+        if 0:self.db=db_api # Stupid hack for code completion in ide
+
+        instance = self.db.instance_get(self.ctx, instance_id)
+        assert isinstance(instance, nova.db.sqlalchemy.models.Instance)
+
+        migration_status = self.scheduler_rpc_api.live_migration(ctxt=ctx,
+                                                                 block_migration=self.migration_settings.block_migration,
+                                                                 disk_over_commit=self.migration_settings.disk_over_commit,
+                                                                 instance=instance,
+                                                                 dest=hostname)
+
+        LOG.error("Migration status %s" % migration_status)

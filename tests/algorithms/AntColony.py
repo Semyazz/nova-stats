@@ -26,11 +26,17 @@ class TestAntColony(test.TestCase):
         def host_init(self, memory, bandwidth):
             self._mem = memory
             self._bandwidth = bandwidth
+            self._cpu = 1000
 
         def vm_init(self, mem_declared, bandwitch, cpu_util):
             self._mem_declared = mem_declared
             self._bandwidth = bandwitch
             self._cpu_util = cpu_util
+            self._cpu_num = 1
+            self._cpu_speed = 1000
+            self._pkts_in = 0
+            self._pkts_out = 0
+            self._mem = mem_declared
 
         Host.__init__ = host_init
         Vm.__init__ = vm_init

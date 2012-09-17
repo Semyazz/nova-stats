@@ -2,9 +2,11 @@ __author__ = 'semy'
 
 import math
 from base import AlgorithmBase
+from base import MigrationItem
 from collections import namedtuple
 from novastats.structures.host import Host
 from novastats.structures.host import Vm
+
 
 from ceilometer.openstack.common import log as logging
 
@@ -20,6 +22,15 @@ class AntColonyAlgorithm(AlgorithmBase):
             self.Memory = memory
             self.Network = network
             self.CPU = cpu
+
+    class Solution(object):
+
+        def __init__(self, minBins, schedule):
+            self.MinBins = minBins
+            self.Schedule = schedule
+
+    def __init__(self):
+        self.Solutions = []
 
     def execute_algorithm(self, input_data_set):
         """
@@ -169,7 +180,20 @@ class AntColonyAlgorithm(AlgorithmBase):
                         tau[bin][item] = tauMin
 
         self.print_result(Sbest)
-        return Sbest
+
+        return [self.get_solution(Sbest)]
+
+    def get_solution(self, solution_matrix):
+
+        migration_plan = []
+
+        for virtual_machine, hosts in solution_matrix.items():
+            for host, value in hosts.items():
+                if value == 1:
+                    migrationItem = MigrationItem(virtual_machine, host)
+                    migration_plan.append(migrationItem)
+
+        return migration_plan
 
 
     def _get_instances_vectors(self, host, instances):
@@ -181,8 +205,8 @@ class AntColonyAlgorithm(AlgorithmBase):
             metrics = instance.getMetrics(host)
             I[instance] = self.Capacity(memory=metrics["M"], network=metrics["N"], cpu=metrics["C"])
             cap = I[instance]
-            assert isinstance(cap, self.Capacity)
-            LOG.error("I:%s\tCPU:%s\tMem:%s\tNet:%s" % (instance.InstanceName, cap.CPU, cap.Memory, cap.Network))
+            #assert isinstance(cap, self.Capacity)
+            #LOG.error("I:%s\tCPU:%s\tMem:%s\tNet:%s" % (instance.InstanceName, cap.CPU, cap.Memory, cap.Network))
 
         return I
 
@@ -192,7 +216,6 @@ class AntColonyAlgorithm(AlgorithmBase):
             for bin, value in bins.items():
                 if value == 1:
                     print "Instance %s@%s" % (item.InstanceName, bin.Hostname)
-
 
     def computeEta(self, c, b, I):
 
@@ -242,7 +265,6 @@ class AntColonyAlgorithm(AlgorithmBase):
         min_used_bins = AntColonyAlgorithm.usedBins(Sbest)
 
         if min_used_bins == 0:
-            print "Select first"
             Sbest = S[0]
 
         for key, Sant in S.items():
@@ -250,6 +272,9 @@ class AntColonyAlgorithm(AlgorithmBase):
             if min_used_bins > used_bins_number:
                 Sbest = Sant
                 min_used_bins = used_bins_number
+                self.Solutions = [self.Solution(min_used_bins, Sbest)]
+            elif min_used_bins == used_bins_number:
+                self.Solutions.append(self.Solution(min_used_bins, Sant))
 
         deltaTau = self.computeDeltaTau(Sbest, min_used_bins)
 
