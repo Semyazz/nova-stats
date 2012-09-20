@@ -2,6 +2,7 @@ __author__ = 'michal'
 
 from ceilometer.openstack.common import log
 from novastats.rrd import rrd
+import math
 
 LOG = log.getLogger(__name__)
 
@@ -104,21 +105,11 @@ class Vm(object):
             self.wM = weights["M"]
 
 
-    def increaseC(self):
-        self.wC += 0.01
+    def modifyC(self, dif):
+        self.wC += 0.01 * math.trunc(dif)
 
-    def increaseN(self):
-        self.wN += 0.01
+    def modifyN(self, dif):
+        self.wN += 0.01 * math.trunc(dif)
 
-    def increaseM(self):
-        self.wM += 0.01
-
-
-    def decreaseC(self):
-        self.wC -= 0.01
-
-    def decreaseN(self):
-        self.wN -= 0.01
-
-    def decreaseM(self):
-        self.wM -= 0.01
+    def modifyM(self, dif):
+        self.wM += 0.01 * math.trunc(dif)

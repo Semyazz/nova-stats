@@ -4,7 +4,6 @@ import datetime
 from structures.host import Host
 from structures.vm import Vm
 from rrd.rrd import RrdWrapper
-import math
 
 class DataProvider(object):
 
@@ -33,7 +32,9 @@ class DataProvider(object):
 
             self.hosts.append(host)
 
-    def saveWeights(self):
+        return self.hosts
+
+    def __saveWeights(self):
 
         self.virtualMachines = {}
         self.estimatedMem = {}
@@ -48,8 +49,6 @@ class DataProvider(object):
 
             self.estimatedMem[host.Hostname] = estimatedMem
 
-
-
     def updateWeights(self):
 
         for host in self.hosts:
@@ -57,24 +56,14 @@ class DataProvider(object):
             hostMem = host._mem_util
             estimatedMem = self.estimatedMem[host.Hostname]
 
-            dif = math.floor(hostMem - (estimatedMem / host._mem))
+            dif = hostMem - (estimatedMem / host._mem)
 
             #todo think what you're doing
 
-            if dif > 0:
+            for vm in host._vms:
+                vm.modifyM(dif)
 
-                for vm in host._vms:
-                    for i in rage(0,dif):
-                        vm.decreaseM()
-
-            elif dif < 0:
-                dif *= -1
-
-                for vm in host._vms:
-                    for i in rage(0,dif):
-                        vm.increaseM()
-
-        self.saveWeights()
+        self.__saveWeights()
 
 
 

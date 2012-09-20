@@ -26,6 +26,7 @@ from nova.openstack.common import context
 from nova.scheduler.rpcapi import SchedulerAPI
 
 from ceilometer.ganglia.rpcapi import HealthMonitorNodeAPI
+from dataProvider import DataProvider
 
 from algorithms.AntColony import AntColonyAlgorithm
 
@@ -95,10 +96,9 @@ class HealthMonitorManager(manager.Manager):
         self.migration_algorithm = AntColonyAlgorithm()
 
         self._init_monitors_connections()
-
-        self.local_storage = RrdWrapper(self.RRD_ROOT_DIR)
-
         self.STARTED = False
+
+        self.dataProvider = DataProvider(self.RRD_ROOT_DIR, self.db, self.ctx)
 
 
 
@@ -151,29 +151,12 @@ class HealthMonitorManager(manager.Manager):
         :return:
         """
 
-        # collect Hosts and VMs data
-        endTime = datetime.datetime.now()
-
-        hostNames = self.local_storage.get_hosts_names()
-        instances = self.local_storage.get_instances_names() # From RRD files
-
-        hosts = []
+        hosts = self.dataProvider.getData()
         virtualMachines = []
-
-        for hostName in hostNames:
-
-            db_instances = self.db.instance_get_all_by_host(self.ctx, hostName) # From DB
-            db_instnaces_names = [instance.name for instance in db_instances]
-
-            host = Host(self.local_storage, db_instnaces_names, hostName, endTime)
-            hosts.append(host)
-
-            vms = host._vms
-            virtualMachines.extend(vms)
 
         for host in hosts:
             LOG.error("host %s\t %s", host.Hostname, host.getMetrics())
-
+            virtualMachines.extend(host._vms)
 
 #        collectedData = self.collect_data(hostname, vm_name, resource)
 #        physicalNodes = self.get_physical_nodes_resources_utilization()
@@ -186,6 +169,9 @@ class HealthMonitorManager(manager.Manager):
         LOG.error("Start Algorithm")
         migrationPlans = self.migration_algorithm.create_migration_plans(input_data_set)
         LOG.error("Stop Algorithm")
+
+        self.dataProvider.updateWeights()
+
         import time
         time.sleep(100)
 
