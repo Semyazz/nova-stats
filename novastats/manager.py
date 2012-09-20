@@ -153,7 +153,6 @@ class HealthMonitorManager(manager.Manager):
 
         # collect Hosts and VMs data
         endTime = datetime.datetime.now()
-        startTime = endTime - datetime.timedelta(minutes=5)
 
         hostNames = self.local_storage.get_hosts_names()
         instances = self.local_storage.get_instances_names() # From RRD files
@@ -166,7 +165,7 @@ class HealthMonitorManager(manager.Manager):
             db_instances = self.db.instance_get_all_by_host(self.ctx, hostName) # From DB
             db_instnaces_names = [instance.name for instance in db_instances]
 
-            host = Host(self.local_storage, db_instnaces_names, hostName, startTime, endTime)
+            host = Host(self.local_storage, db_instnaces_names, hostName, endTime)
             hosts.append(host)
 
             vms = host._vms
