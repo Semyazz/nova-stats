@@ -172,6 +172,8 @@ class HealthMonitorManager(manager.Manager):
 
         self.dataProvider.updateWeights()
 
+	LOG.error("%s", self.dataProvider.virtualMachines)
+
         import time
         time.sleep(100)
 

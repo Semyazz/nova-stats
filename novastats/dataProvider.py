@@ -56,14 +56,16 @@ class DataProvider(object):
         for host in self.hosts:
 
             hostMem = host._mem_util
-            estimatedMem = self.estimatedMem[host.Hostname]
 
-            dif = hostMem - (estimatedMem / host._mem)
+            if self.estimatedMem.has_key(host.Hostname):
+	    	estimatedMem = self.estimatedMem[host.Hostname]
+
+            	dif = hostMem - (estimatedMem / host._mem)
 
             #todo think what you're doing
 
-            for vm in host._vms:
-                vm.modifyM(dif)
+            	for vm in host._vms:
+                    vm.modifyM(dif)
 
         self.__saveWeights()
 
