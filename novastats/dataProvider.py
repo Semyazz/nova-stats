@@ -11,6 +11,8 @@ class DataProvider(object):
         self.local_storage = RrdWrapper(rootDir)
         self.database = db
         self.context = ctx
+	self.virtualMachines = None
+	self.estimatedMem = {}
 
 
     def getData(self):

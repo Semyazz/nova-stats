@@ -58,8 +58,8 @@ class Vm(object):
         return self.wC * self.getC(host) + self.wM * self._mem_declared + self.wN * self.getN(host)
 
     def setMem(self, host, m_weight_sum):
-        self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host)
-        #self._mem =  self._mem_declared
+        #self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host)
+        self._mem =  self._mem_declared
 
 
     def getC (self, host):

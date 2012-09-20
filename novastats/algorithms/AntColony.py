@@ -386,3 +386,7 @@ class AntColonyAlgorithm(AlgorithmBase):
         self.execute_algorithm(input_data_set)
 
         return plans
+
+
+    def get_migration_plans(self):
+	pass
