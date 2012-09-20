@@ -12,7 +12,7 @@ class Host(object):
 
         return list[len(list) - 1]
 
-    def __init__(self, rrdWrapper, instances, name, endTime):
+    def __init__(self, rrdWrapper, instances, name, endTime, weights=None):
 
         self.Hostname = name
 
@@ -50,8 +50,15 @@ class Host(object):
 
         self._vms = []
 
-        for instance in instances:
-            self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed, endTime))
+        if weights is not None:
+            for instance in instances:
+                self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed, endTime, weights[instance])) #todo may be null in case of new instance
+        else:
+            for instance in instances:
+                self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed, endTime))
+
+
+
 
         mWeightSum = self.getMWeightSum()
 

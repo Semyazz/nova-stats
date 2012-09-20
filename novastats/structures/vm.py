@@ -5,16 +5,16 @@ from novastats.rrd import rrd
 
 LOG = log.getLogger(__name__)
 
-W1, W2, W3 = 1, 1, 1
-
 class Vm(object):
 
 
 
-    def __init__(self, rrdWrapper, instanceName, hostName, cpu_speed, endTime):
+    def __init__(self, rrdWrapper, instanceName, hostName, cpu_speed, endTime, weights=None):
 
         self.Hostname = hostName
         self.InstanceName = instanceName
+
+        self.setWeights(weights)
 
         cpu_util = rrd.getWeightedAverageData(rrdWrapper, endTime, "vcpu_util", hostName, instanceName)
         cpu_num = rrd.getSingleValue(rrdWrapper, endTime, "vcpu_num", hostName, instanceName)
@@ -54,11 +54,11 @@ class Vm(object):
         return self._mem
 
     def getMWeight(self, host):
-        return W1 * self.getC(host) + W2 * self._mem_declared + W3 * self.getN(host)
+        return self.wC * self.getC(host) + self.wM * self._mem_declared + self.wN * self.getN(host)
 
     def setMem(self, host, m_weight_sum):
-        #self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host)
-        self._mem =  self._mem_declared
+        self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host)
+        #self._mem =  self._mem_declared
 
 
     def getC (self, host):
@@ -85,3 +85,40 @@ class Vm(object):
             "N" : self.getN(host),
             "M" : self.getM(host),
            }
+
+    def getWeights(self):
+        return {
+            "C" : self.wC,
+            "N" : self.wN,
+            "M" : self.wM,
+        }
+
+    def setWeights(self, weights):
+        if weights is None:
+            self.wC = 1
+            self.wN = 1
+            self.wM = 1
+        else:
+            self.wC = weights["C"]
+            self.wN = weights["N"]
+            self.wM = weights["M"]
+
+
+    def increaseC(self):
+        self.wC += 0.01
+
+    def increaseN(self):
+        self.wN += 0.01
+
+    def increaseM(self):
+        self.wM += 0.01
+
+
+    def decreaseC(self):
+        self.wC -= 0.01
+
+    def decreaseN(self):
+        self.wN -= 0.01
+
+    def decreaseM(self):
+        self.wM -= 0.01
