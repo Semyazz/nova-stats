@@ -36,7 +36,7 @@ class DataProvider(object):
 
         return self.hosts
 
-    def __saveWeights(self):
+    def saveWeights(self):
 
         self.virtualMachines = {}
         self.estimatedMem = {}
@@ -67,7 +67,6 @@ class DataProvider(object):
             	for vm in host._vms:
                     vm.modifyM(dif)
 
-        self.__saveWeights()
 
 
 
