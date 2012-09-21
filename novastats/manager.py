@@ -168,11 +168,16 @@ class HealthMonitorManager(manager.Manager):
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
         input_data_set = InputData(Hosts=hosts, VirtualMachines=virtualMachines, Alert=alert)
 
+		
+	#todo if alert mem
+	self.dataProvider.updateWeights()
+
         LOG.error("Start Algorithm")
         migrationPlans = self.migration_algorithm.create_migration_plans(input_data_set)
         LOG.error("Stop Algorithm")
 
-        self.dataProvider.updateWeights()
+	self.dataProvider.saveWeights()
+
 
         import time
         time.sleep(100)

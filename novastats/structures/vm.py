@@ -10,12 +10,12 @@ class Vm(object):
 
 
 
-    def __init__(self, rrdWrapper, instanceName, hostName, cpu_speed, endTime, weights=None):
+    def __init__(self, rrdWrapper, instanceName, hostName, cpu_speed, endTime, weight=None):
 
         self.Hostname = hostName
         self.InstanceName = instanceName
 
-        self.setWeights(weights)
+        self.setWeights(weight)
 
         cpu_util = rrd.getWeightedAverageData(rrdWrapper, endTime, "vcpu_util", hostName, instanceName)
         cpu_num = rrd.getSingleValue(rrdWrapper, endTime, "vcpu_num", hostName, instanceName)
@@ -55,11 +55,15 @@ class Vm(object):
         return self._mem
 
     def getMWeight(self, host):
-        return self.wC * self.getC(host) + self.wM * self._mem_declared + self.wN * self.getN(host)
+        #return self.wC * self.getC(host) + self.wM * self._mem_declared + self.wN * self.getN(host) #first (dump) version
+	#return max( self.wM * (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared, self._mem_declared)
+	return min( max(256, (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared) + self.wM * self._mem_declared, self._mem_declared)
+
 
     def setMem(self, host, m_weight_sum):
-        self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host)
-        #self._mem =  self._mem_declared
+        self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host) 
+        #self._mem =  self._mem_declared #mem declared
+	
 
 
     def getC (self, host):
@@ -88,21 +92,13 @@ class Vm(object):
            }
 
     def getWeights(self):
-        return {
-            "C" : self.wC,
-            "N" : self.wN,
-            "M" : self.wM,
-        }
+        return self.wM
 
-    def setWeights(self, weights):
-        if weights is None:
-            self.wC = 1
-            self.wN = 1
+    def setWeights(self, weight):
+        if weight is None:
             self.wM = 1
         else:
-            self.wC = weights["C"]
-            self.wN = weights["N"]
-            self.wM = weights["M"]
+            self.wM = weight
 
 
     def modifyC(self, dif):

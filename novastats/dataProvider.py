@@ -11,10 +11,15 @@ class DataProvider(object):
         self.local_storage = RrdWrapper(rootDir)
         self.database = db
         self.context = ctx
+	self.virtualMachines = {}
+	self.estimatedMem = {}
+	self.now = None
+	self.lastUpdateTime = None	
+
 
 
     def getData(self):
-        endTime = datetime.datetime.now()
+        self.now = endTime = datetime.datetime.now()
 
         hostNames = self.local_storage.get_hosts_names()
 
@@ -34,37 +39,34 @@ class DataProvider(object):
 
         return self.hosts
 
-    def __saveWeights(self):
+    def saveWeights(self):
+	
+	self.lastUpdateTime = datetime.datetime.now
 
         self.virtualMachines = {}
         self.estimatedMem = {}
 
         for host in self.hosts:
 
-            estimatedMem = 0
-
             for vm in host._vms:
                 self.virtualMachines[vm.InstanceName] = vm.getWeights()
-                estimatedMem += vm._mem
-
-            self.estimatedMem[host.Hostname] = estimatedMem
+                estimatedMem[vm.InstanceName] = vm._mem
 
     def updateWeights(self):
+	
+	if self.lastUpdateTime + datetime.timedelta(minutes=20) >= self.now:
 
-        for host in self.hosts:
+            for host in self.hosts:
+	    	for vm in host._vms:
+	        
+	        estimatedMem = self.estimatedMem[vm.InstanceName]
 
-            hostMem = host._mem_util
-            estimatedMem = self.estimatedMem[host.Hostname]
+            	dif = vm._mem / estimatedMem
 
-            dif = hostMem - (estimatedMem / host._mem)
+            	#todo think what you're doing
 
-            #todo think what you're doing
-
-            for vm in host._vms:
-                vm.modifyM(dif)
-
-        self.__saveWeights()
-
+            	for vm in host._vms:
+                    vm.modifyM(dif)
 
 
 
