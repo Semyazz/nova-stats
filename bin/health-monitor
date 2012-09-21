@@ -16,6 +16,8 @@ from ceilometer.openstack.common import log
 from ceilometer.openstack.common import cfg
 from ceilometer.service import prepare_service
 
+LOG = logging.getLogger(__name__)
+
 
 if __name__ == '__main__':
 

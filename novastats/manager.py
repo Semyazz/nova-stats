@@ -29,6 +29,8 @@ from ceilometer.ganglia.rpcapi import HealthMonitorNodeAPI
 from dataProvider import DataProvider
 
 from algorithms.AntColony import AntColonyAlgorithm
+from algorithms.linearPrograming import LinearProgramingAlgorithm
+
 
 
 from rrd.rrd import RrdWrapper
