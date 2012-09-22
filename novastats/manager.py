@@ -32,7 +32,7 @@ from algorithms.AntColony import AntColonyAlgorithm
 from algorithms.linearPrograming import LinearProgramingAlgorithm
 
 
-
+from rrd import rrd
 from rrd.rrd import RrdWrapper
 from structures.host import Host
 from algorithms.base import MigrationItem
@@ -78,7 +78,19 @@ class HealthMonitorManager(manager.Manager):
                 self.STARTED = True
 
         try:
-            self.prepare_resource_allocation_algorithm_input(alert)
+            if alert.MetricName == 'mem_util':
+                now = datetime.datetime.now()
+                startTime = now - datetime.timedelta(minutes=5)
+
+                memFree = self.dataProvider.local_storage.query(startTime, now, "mem_free", hostname = alert.HostName).Average
+                memTotal = rrd.getSingleValue(self.dataProvider.local_storage, now, "mem_total", alert.HostName)
+
+                util = (1 - memFree / memTotal) * 100
+
+                if util > 70 or util < 40:
+                    hostNames = self.local_storage.get_hosts_names()
+                    self.prepare_resource_allocation_algorithm_input(alert)
+
         except Exception as err:
             print err
             LOG.error(err)
@@ -169,14 +181,14 @@ class HealthMonitorManager(manager.Manager):
         input_data_set = InputData(Hosts=hosts, VirtualMachines=virtualMachines, Alert=alert)
 
 		
-	#todo if alert mem
-	self.dataProvider.updateWeights()
+        #todo if alert mem
+        self.dataProvider.updateWeights()
 
         LOG.error("Start Algorithm")
         migrationPlans = self.migration_algorithm.create_migration_plans(input_data_set)
         LOG.error("Stop Algorithm")
 
-	self.dataProvider.saveWeights()
+        self.dataProvider.saveWeights()
 
 
         import time
