@@ -24,6 +24,7 @@ from ceilometer.openstack.common import log as logging
 from nova.openstack.common import rpc
 from nova.openstack.common import context
 from nova.scheduler.rpcapi import SchedulerAPI
+from nova import context
 
 from ceilometer.ganglia.rpcapi import HealthMonitorNodeAPI
 from dataProvider import DataProvider
@@ -49,7 +50,7 @@ except ImportError:
     import nova.rpc as nova_rpc
 
 LOG = logging.getLogger(__name__)
-#FLAGS = flags.FLAGS
+FLAGS = flags.FLAGS
 #LOG.logger.setLevel(10)
 
 class HealthMonitorManager(manager.Manager):
@@ -78,14 +79,9 @@ class HealthMonitorManager(manager.Manager):
                 self.STARTED = True
 
         try:
-
-            print "alert %s" % alert
             counter = alert["value"]
             metricName = counter[1]
-            resource_matadata = counter[9]
-            hostName = resource_matadata["host"]
-
-            LOG.error("alert %s", alert)
+            hostName = counter[9]["host"]
 
             util = 0
             now = datetime.datetime.now()
@@ -132,6 +128,7 @@ class HealthMonitorManager(manager.Manager):
 
     # Manager inherited ------------------------------------------------------------------------------------------------
     def init_host(self):
+
         self.topic = HealthMonitorAPI.HEALTH_MONITOR_TOPIC
         self.ctx = context.get_admin_context()
         self.ctx.read_deleted = "no"
@@ -143,7 +140,7 @@ class HealthMonitorManager(manager.Manager):
 
         self.dataProvider = DataProvider(self.RRD_ROOT_DIR, self.db, self.ctx)
 
-
+        self.scheduler_rpc_api = None
 
 #        self._test_rpc_call()
 
@@ -152,12 +149,12 @@ class HealthMonitorManager(manager.Manager):
     #-------------------------------------------------------------------------------------------------------------------
 
     class MigrationSettings(object):
-        block_migration=None,
-        disk_over_commit=None
+        block_migration=False,
+        disk_over_commit=False
 
         def __init__(self, **kwargs):
-            self.block_migration = True
-            self.disk_over_commit = True
+            self.block_migration = False
+            self.disk_over_commit = False
             for key in kwargs:
                 setattr(self, key, kwargs[key])
 
@@ -214,16 +211,22 @@ class HealthMonitorManager(manager.Manager):
         self.dataProvider.updateWeights()
 
         LOG.error("Start Algorithm")
-        migrationPlans = self.migration_algorithm.create_migration_plans(input_data_set)
+#        self.test_migration()
+        migrationPlans = self.migration_algorithm.execute_algorithm(input_data_set)
+
         LOG.error("Stop Algorithm")
 
         self.dataProvider.saveWeights()
 
+        import time
+        time.sleep(10)
+
+        self.execute_plan(migrationPlans)
 
         import time
-        time.sleep(100)
+        time.sleep(60)
 
-        #self.execute_plan(migrationPlans)
+
 
         pass
 
@@ -238,11 +241,13 @@ class HealthMonitorManager(manager.Manager):
         :param migrationPlans: list
         :return:
         """
+
         try:
             if not self.scheduler_rpc_api:
                 self._init_scheduler()
 
             assert isinstance(migrationPlans, list)
+
             if migrationPlans:
                 plan = migrationPlans[0]
             else:
@@ -250,12 +255,17 @@ class HealthMonitorManager(manager.Manager):
                 return
 
             ctx = context.get_admin_context()
+            instances = self.db.instance_get_all(self.ctx)
+
             for migrationItem in plan:
                 assert isinstance(migrationItem, MigrationItem)
-                if 0:self.db=db_api # Stupid hack for code completion in ide
+                #if 0:self.db=db_api # Stupid hack for code completion in ide
 
-                instance = self.db.instance_get(self.ctx, migrationItem.instance_id)
-                assert isinstance(instance, nova.db.sqlalchemy.models.Instance)
+                instance = self._get_instance(migrationItem.instance_id, instances)
+                assert instance is not None
+
+                if instance['host'] == migrationItem.hostname:
+                    continue
 
                 migration_status = self.scheduler_rpc_api.live_migration(ctxt=ctx,
                         block_migration=self.migration_settings.block_migration,
@@ -265,6 +275,13 @@ class HealthMonitorManager(manager.Manager):
 
         except:
             raise
+
+    def _get_instance(self, name, instances):
+        for instance in instances:
+            if instance.name == name:
+                return instance
+
+
 
     def collect_data(self, hostname, vm_name, resource):
         """
@@ -328,15 +345,15 @@ class HealthMonitorManager(manager.Manager):
 
 
 
-    def test_migration(self, migrationPlans):
+    def test_migration(self):
         """
         Executes migration plan. Migrate VMs to given nodes.
         :param migrationPlans: list
         :return:
         """
 
-        instance_id = ""
-        hostname = ""
+        instance_uuid = "3974a5b5-39d4-4bcf-a12d-a1a17bdf2341"
+        hostname = "lab-os-1"
 
         if not self.scheduler_rpc_api:
             self._init_scheduler()
@@ -346,13 +363,19 @@ class HealthMonitorManager(manager.Manager):
 
         if 0:self.db=db_api # Stupid hack for code completion in ide
 
-        instance = self.db.instance_get(self.ctx, instance_id)
+#        self.db.instance_get_by_uuid(self.ctx, instance_uuid)
+        instances = self.db.instance_get_all(ctx)
+
+        selected = None
+
         assert isinstance(instance, nova.db.sqlalchemy.models.Instance)
 
-        migration_status = self.scheduler_rpc_api.live_migration(ctxt=ctx,
-                                                                 block_migration=self.migration_settings.block_migration,
-                                                                 disk_over_commit=self.migration_settings.disk_over_commit,
-                                                                 instance=instance,
-                                                                 dest=hostname)
+
+
+#        migration_status = self.scheduler_rpc_api.live_migration(ctxt=ctx,
+#                                                                 block_migration=self.migration_settings.block_migration,
+#                                                                 disk_over_commit=self.migration_settings.disk_over_commit,
+#                                                                 instance=instance,
+#                                                                 dest=hostname)
 
         LOG.error("Migration status %s" % migration_status)
