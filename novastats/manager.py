@@ -78,21 +78,50 @@ class HealthMonitorManager(manager.Manager):
                 self.STARTED = True
 
         try:
-            if alert.MetricName == 'mem_util':
-                now = datetime.datetime.now()
-                startTime = now - datetime.timedelta(minutes=5)
 
-                memFree = self.dataProvider.local_storage.query(startTime, now, "mem_free", hostname = alert.HostName).Average
+            print "alert %s" % alert
+            counter = alert["value"]
+            metricName = counter[1]
+            resource_matadata = counter[9]
+            hostName = resource_matadata["host"]
+
+            LOG.error("alert %s", alert)
+
+            util = 0
+            now = datetime.datetime.now()
+            startTime = now - datetime.timedelta(minutes=5)
+
+
+            if metricName == 'mem_util':
+                memFree = self.dataProvider.local_storage.query(startTime,
+                                                                now,
+                                                                "mem_free",
+                                                                hostname = hostName).Average
                 memTotal = rrd.getSingleValue(self.dataProvider.local_storage, now, "mem_total", alert.HostName)
 
                 util = (1 - memFree / memTotal) * 100
 
-                if util > 70 or util < 40:
-                    hostNames = self.local_storage.get_hosts_names()
-                    self.prepare_resource_allocation_algorithm_input(alert)
+            elif metricName == 'cpu_util':
+                cpu_user = self.dataProvider.local_storage.query(startTime, now, "cpu_user", hostname = hostName).Average
+                cpu_system = rrd.getSingleValue(self.dataProvider.local_storage, now, "cpu_system", alert.HostName)
+
+                util = cpu_user + cpu_system
+
+            elif metricName == 'pkts':
+                pkts_out = self.dataProvider.local_storage.query(startTime, now, "pkts_out", hostname = hostName).Average
+                pkts_in = rrd.getSingleValue(self.dataProvider.local_storage, now, "pkts_in", alert.HostName)
+
+                util = pkts_out + pkts_in
+
+
+
+            if util > 70 or util < 40:
+                #hostNames = self.local_storage.get_hosts_names()
+                self.prepare_resource_allocation_algorithm_input(alert)
+
 
         except Exception as err:
-            print err
+            print "exception %s" % err
             LOG.error(err)
 
         with self.lock:
@@ -194,7 +223,7 @@ class HealthMonitorManager(manager.Manager):
         import time
         time.sleep(100)
 
-        self.execute_plan(migrationPlans)
+        #self.execute_plan(migrationPlans)
 
         pass
 

@@ -56,8 +56,14 @@ class Vm(object):
 
     def getMWeight(self, host):
         #return self.wC * self.getC(host) + self.wM * self._mem_declared + self.wN * self.getN(host) #first (dump) version
-	#return max( self.wM * (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared, self._mem_declared)
-	return min( max(256, (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared) + self.wM * self._mem_declared, self._mem_declared)
+	    #return max( self.wM * (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared, self._mem_declared)
+
+        first = max(256, (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared)
+        weight = min(first  + self.wM * self._mem_declared, self._mem_declared)
+
+        assert weight > 0, "Weight == 0"
+
+        return weight
 
 
     def setMem(self, host, m_weight_sum):

@@ -214,4 +214,7 @@ def getWeightedAverageData(rrdWrapper, endTime, metric, host, instance=None):
 def getSingleValue(rrdWrapper, endTime, metric, host, instance=None):
 
     startTime = endTime - datetime.timedelta(minutes=1)
-    return rrdWrapper.query(startTime, endTime, metric, instance, host).getLastSingleValue()
+
+    result = rrdWrapper.query(startTime, endTime, metric, instance, host)
+
+    return result.getLastSingleValue()
