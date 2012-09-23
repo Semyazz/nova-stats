@@ -210,7 +210,8 @@ class HealthMonitorManager(manager.Manager):
         migrationPlans = self.migration_algorithm.execute_algorithm(input_data_set)
         LOG.error("Stop Algorithm")
 
-        self.dataProvider.saveWeights()
+        assert migrationPlans is not None, "Migration plans is none"
+        #self.dataProvider.saveWeights()
 
         plan, migrations_counter = self.choose_migration_plan(migrationPlans, virtualMachines)
         LOG.error("Migration count %s", migrations_counter)
@@ -242,9 +243,20 @@ class HealthMonitorManager(manager.Manager):
         migrationCount = 0
         selfMigrations = []
 
+#        print "vms"
+#        for vm in virtualMachines:
+#            print vm.InstanceName
+#
+#        print "Migration Items"
+#        for item in plan:
+#            print "%s@%s" % (item.instance_id, item.hostname)
+
         for vm in  virtualMachines:
 
+            assert plan is not None, "Plan is none"
+            assert vm is not None, "VM is None"
             migrationItem = find(lambda migration_item: migration_item.instance_id == vm.InstanceName, plan)
+            assert migrationItem is not None, "Migration item is None"
 
             if vm.Hostname != migrationItem.hostname:
                 migrationCount+=1

@@ -70,6 +70,9 @@ class Vm(object):
 
     def setMem(self, host, m_weight_sum):
         self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host)
+
+        #LOG.info("%s * %s / %s * %s = %s " %
+        #         (host._mem, host._mem_util, m_weight_sum ,self.getMWeight(host), self._mem))
         #self._mem =  self._mem_declared #mem declared
 
 

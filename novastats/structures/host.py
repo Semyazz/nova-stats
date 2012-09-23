@@ -89,9 +89,9 @@ class Host(object):
             vmi.setMem(self, mWeightSum)
 
     def getReservedSpace(self):
-        return (1 - Boundaries.CPU_UPPER_BOUND,
-                1 - Boundaries.NETWORK_UPPER_BOUND,
-                1 - Boundaries.MEMORY_UPPER_BOUND)
+        return (1.0 - Boundaries.CPU_UPPER_BOUND,
+                1.0 - Boundaries.NETWORK_UPPER_BOUND,
+                1.0 - Boundaries.MEMORY_UPPER_BOUND)
 
     def getUpperBounds(self):
 

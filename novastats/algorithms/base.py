@@ -41,3 +41,7 @@ class AlgorithmBase(object):
     @abc.abstractmethod
     def get_migration_plans(self):
         pass
+
+    @abc.abstractmethod
+    def profitFunction(self, S, Sbest):
+        pass

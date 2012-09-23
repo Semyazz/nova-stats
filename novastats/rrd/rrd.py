@@ -47,9 +47,9 @@ class RrdData(object):
                 count += 1
 
         if count > 0:
-            self.Average = max(self.Average / count,1)
+            self.Average /= count
         else:
-            self.Average = 1
+            self.Average = 0
 
     def getSingleValue(self):
         return max(self.Series[0][0], 1)
@@ -58,9 +58,9 @@ class RrdData(object):
         value = get_last(self.Series)
 
         if value is not None:
-            return max(value,1)
+            return value
         else:
-            return 1
+            return 0
 
 
 

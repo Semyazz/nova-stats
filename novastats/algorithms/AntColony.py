@@ -69,6 +69,7 @@ class AntColonyAlgorithm(AlgorithmBase):
         for bin in Bins:
             assert isinstance(bin, Host)
             C[bin] = self.Capacity(memory=1.0, network=1.0, cpu=1.0)
+#            Binit[bin] = self.Capacity(memory=0.0, network=0.0, cpu=0.0)
             c, n, m = bin.getReservedSpace()
             Binit[bin] = self.Capacity(memory=m, network=n, cpu=c)
 
@@ -183,6 +184,11 @@ class AntColonyAlgorithm(AlgorithmBase):
 
         self.print_result(Sbest)
 
+#        print "Other solutions?:"
+#        for solution in self.Solutions:
+#            print "-------------------"
+#            self.print_result(solution.Schedule)
+
         return [self.get_solution(Sbest)]
 
     def get_solution(self, solution_matrix):
@@ -263,30 +269,31 @@ class AntColonyAlgorithm(AlgorithmBase):
         return sum(used_bins_number.values())
 
 
-    def profitFunction(self, S, Sbest):
-        pass
+#    def profitFunction(self, S, Sbest):
+#        LOG.error("Using empty profit function?")
+#        pass
 
     def saveBestOrIsGlobalBest(self, S, Sbest):
 
-        if self.profitFunction:
-            # SBest - current SBest
-            # Solutions
-            Sbest = self.profitFunction(S, SBest)
-            min_used_bins = AntColonyAlgorithm.usedBins(Sbest)
-        else:
-            min_used_bins = AntColonyAlgorithm.usedBins(Sbest)
+#        if self.profitFunction:
+#            # SBest - current SBest
+#            # Solutions
+#            Sbest = self.profitFunction(S, SBest)
+#            min_used_bins = AntColonyAlgorithm.usedBins(Sbest)
+#        else:
+        min_used_bins = AntColonyAlgorithm.usedBins(Sbest)
 
-            if min_used_bins == 0:
-                Sbest = S[0]
+        if min_used_bins == 0:
+            Sbest = S[0]
 
-            for key, Sant in S.items():
-                used_bins_number = AntColonyAlgorithm.usedBins(Sant)
-                if min_used_bins > used_bins_number:
-                    Sbest = Sant
-                    min_used_bins = used_bins_number
-                    self.Solutions = [self.Solution(min_used_bins, Sbest)]
-                elif min_used_bins == used_bins_number:
-                    self.Solutions.append(self.Solution(min_used_bins, Sant))
+        for key, Sant in S.items():
+            used_bins_number = AntColonyAlgorithm.usedBins(Sant)
+            if min_used_bins > used_bins_number:
+                Sbest = Sant
+                min_used_bins = used_bins_number
+                self.Solutions = [self.Solution(min_used_bins, Sbest)]
+            elif min_used_bins == used_bins_number:
+                self.Solutions.append(self.Solution(min_used_bins, Sant))
 
         deltaTau = self.computeDeltaTau(Sbest, min_used_bins)
 
@@ -401,3 +408,8 @@ class AntColonyAlgorithm(AlgorithmBase):
     
     def get_migration_plans(self):
 	    pass
+
+
+    def profitFunction(self, S, Sbest):
+        LOG.error("profitFunction log")
+        pass

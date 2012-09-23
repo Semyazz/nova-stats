@@ -42,6 +42,7 @@ class DataProvider(object):
                 cpu_speed = self.getSingleValue(endTime, "cpu_speed", hostName)
                 mem = self.getSingleValue(endTime, "mem_total", hostName)
                 mem_free = self.getWeightedAverageData(endTime, "mem_free", hostName)
+
             except Exception as err:
                 LOG.error("error during retrieving host: %s data from rrd files: %s", hostName, err)
                 continue
@@ -58,27 +59,11 @@ class DataProvider(object):
             vms = []
 
             for instanceName in db_instnaces_names:
-                cpu_util = self.getWeightedAverageData(endTime, "vcpu_util", hostName, instanceName)
-                cpu_num = self.getSingleValue(endTime, "vcpu_num", hostName, instanceName)
-                pkts_in = self.getWeightedAverageData(endTime, "vpkts_in", hostName, instanceName)
-                pkts_out = self.getWeightedAverageData(endTime, "vpkts_out", hostName, instanceName)
-                mem_declared = self.getSingleValue(endTime, "vmem_total", hostName, instanceName)
 
-                vm = Vm(
-                    hostName,
-                    instanceName,
-                    cpu_util,
-                    cpu_num,
-                    pkts_in,
-                    pkts_out,
-                    mem_declared,
-                    cpu_speed)
+                vm = self.createVm(hostName, instanceName, cpu_speed, endTime)
 
-
-                if self.virtualMachines.has_key(instanceName):
-                    vm.setWeights(self.virtualMachines[instanceName])
-
-                vms.append(vm)
+                if vm is not None:
+                    vms.append(vm)
 
             host._vms = vms
 
@@ -87,6 +72,43 @@ class DataProvider(object):
             self.hosts.append(host)
 
         return self.hosts
+
+
+    def createVm(self, hostName, instanceName, hostCpuSpeed, endTime):
+
+        try:
+            cpu_util = self.getWeightedAverageData(endTime, "vcpu_util", hostName, instanceName)
+            cpu_num = self.getSingleValue(endTime, "vcpu_num", hostName, instanceName)
+            pkts_in = self.getWeightedAverageData(endTime, "vpkts_in", hostName, instanceName)
+            pkts_out = self.getWeightedAverageData(endTime, "vpkts_out", hostName, instanceName)
+            mem_declared = self.getSingleValue(endTime, "vmem_total", hostName, instanceName)
+
+            vm = Vm(
+                hostName,
+                instanceName,
+                cpu_util,
+                cpu_num,
+                pkts_in,
+                pkts_out,
+                mem_declared,
+                hostCpuSpeed)
+
+
+            if self.virtualMachines.has_key(instanceName):
+                vm.setWeights(self.virtualMachines[instanceName])
+            else:
+                vm.setWeights(None)
+
+            return vm
+
+        except Exception as err:
+            LOG.error("error during retrieving vm: %s data on host %s from rrd files: %s",
+                instanceName,
+                hostName,
+                err)
+
+            return None
+
 
     def saveWeights(self):
 	
@@ -127,7 +149,7 @@ class DataProvider(object):
             counter = alert["value"]
             metricName = counter[1]
             hostName = counter[9]["host"]
-            util = 0
+            util = None
 
             now = datetime.datetime.now()
 
@@ -144,8 +166,6 @@ class DataProvider(object):
                 memFree = self.local_storage.query(startTime, now, "mem_free", hostname = hostName).Average
                 memTotal = self.getSingleValue(now, "mem_total", hostName)
 
-                print memTotal
-
                 util = (1 - memFree / memTotal) * 100
 
             elif metricName == 'cpu_util':
@@ -160,13 +180,11 @@ class DataProvider(object):
                 pkts_out = self.local_storage.query(startTime, now, "pkts_out", hostname = hostName).Average
                 pkts_in = self.local_storage.query(startTime, now, "pkts_in", hostname = hostName).Average
 
-                util = pkts_out + pkts_in
-
-
+                util = 10 #(pkts_out + pkts_in) / 10240 * 100
 
             LOG.error("dataProvider host: %s %s util is %s", hostName, metricName, util)
 
-            if util > 70 or util < 40:
+            if util is not None and (util > 70):# or util < 40):
                 return True
             else:
                 return False
