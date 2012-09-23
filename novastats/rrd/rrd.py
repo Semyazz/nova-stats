@@ -24,11 +24,16 @@ def get_last(list):
 class RrdData(object):
 
     def __init__(self, info, additional, series):
-        self.Info = info
-        self.Additional = additional
-        self.Series = series
 
-        self.__calculateAverage()
+        try:
+
+            self.Info = info
+            self.Additional = additional
+            self.Series = series
+
+            self.__calculateAverage()
+        except Exception as err:
+            LOG.error("RrdData Exception %s",err)
 
 
     def __calculateAverage(self):
@@ -42,20 +47,20 @@ class RrdData(object):
                 count += 1
 
         if count > 0:
-            self.Average /= count
+            self.Average = max(self.Average / count,1)
         else:
-            self.Average = 0
+            self.Average = 1
 
     def getSingleValue(self):
-        return self.Series[0][0]
+        return max(self.Series[0][0], 1)
 
     def getLastSingleValue(self):
         value = get_last(self.Series)
 
         if value is not None:
-            return value
+            return max(value,1)
         else:
-            return 0
+            return 1
 
 
 
@@ -132,7 +137,12 @@ class RrdWrapper(object):
 
         #print "%s - %s" % (startTime, endTime)
 
-        rrd_data = rrdtool.fetch(rrdObject, "AVERAGE", "--start", str(startTime), "--end", str(endTime))
+        rrd_data = None
+
+        try:
+            rrd_data = rrdtool.fetch(str(rrdObject), "AVERAGE", "--start", str(startTime), "--end", str(endTime))
+        except Exception as err:
+            LOG.error("fetch exc %s | %s", err, rrdObject)
 
         return RrdData(info=rrd_data[0], additional=rrd_data[1], series=rrd_data[2])
 
@@ -186,35 +196,3 @@ class RrdWrapper(object):
     def get_info(self, rrdObject, clusterName = "Openstack"):
         #TODO: translate into human-redable output.
         return rrdtool.info(rrdObject)
-
-
-def getWeightedAverageData(rrdWrapper, endTime, metric, host, instance=None):
-    
-    startTime = endTime - datetime.timedelta(minutes=5)
-
-    _5minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
-
-    startTime = endTime - datetime.timedelta(minutes=10)
-
-    _10minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
-
-    startTime = endTime - datetime.timedelta(minutes=15)
-
-    _15minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
-
-    startTime = endTime - datetime.timedelta(minutes=30)
-
-    _30minuteData = rrdWrapper.query(startTime, endTime, metric, instance, host)
-
-    return 0.4 * _5minuteData.Average + \
-           0.3 * _10minuteData.Average + \
-           0.2 * _15minuteData.Average + \
-           0.1 * _30minuteData.Average
-
-def getSingleValue(rrdWrapper, endTime, metric, host, instance=None):
-
-    startTime = endTime - datetime.timedelta(minutes=1)
-
-    result = rrdWrapper.query(startTime, endTime, metric, instance, host)
-
-    return result.getLastSingleValue()

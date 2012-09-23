@@ -3,6 +3,7 @@ __author__ = 'michal'
 from ceilometer.openstack.common import log
 from vm import Vm
 from novastats.rrd import rrd
+from novastats.flags import Boundaries
 
 LOG = log.getLogger(__name__)
 
@@ -12,17 +13,16 @@ class Host(object):
 
         return list[len(list) - 1]
 
-    def __init__(self, rrdWrapper, instances, name, endTime, weights=None):
+    def __init__(self,
+                 name,
+                 cpu_system,
+                 cpu_user,
+                 cpu_num,
+                 cpu_speed,
+                 mem,
+                 mem_free):
 
         self.Hostname = name
-
-        cpu_system = rrd.getWeightedAverageData(rrdWrapper, endTime, "cpu_system", name)
-        cpu_user = rrd.getWeightedAverageData(rrdWrapper, endTime, "cpu_user", name)
-        cpu_num = rrd.getSingleValue(rrdWrapper, endTime, "cpu_num", name)
-        cpu_speed = rrd.getSingleValue(rrdWrapper, endTime, "cpu_speed", name)
-        mem = rrd.getSingleValue(rrdWrapper, endTime, "mem_total", name)
-        mem_free = rrd.getWeightedAverageData(rrdWrapper, endTime, "mem_free", name)
-
 
         LOG.error("host: %s\t"
                   "cpu_system %s\t"
@@ -49,25 +49,6 @@ class Host(object):
         self._cpu = self._cpu_speed * cpu_num
 
         self._vms = []
-
-        if weights is not None:
-            for instance in instances:
-                if weights.has_key(instance):
-                    self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed, endTime, weights[instance]))
-                else:
-                    self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed, endTime))
-
-        else:
-            for instance in instances:
-                self._vms.append(Vm(rrdWrapper,instance,name,cpu_speed, endTime))
-
-
-
-
-        mWeightSum = self.getMWeightSum()
-
-        for vmi in self._vms:
-            vmi.setMem(self, mWeightSum)
 
     def getMWeightSum(self):
         m_weight_sum = 0
@@ -99,4 +80,35 @@ class Host(object):
             "C" : cValue / self._cpu,
             "N" : nValue / self._bandwidth,
             "M" : mValue / self._mem,
+        }
+
+    def setVmMem(self):
+        mWeightSum = self.getMWeightSum()
+
+        for vmi in self._vms:
+            vmi.setMem(self, mWeightSum)
+
+    def getReservedSpace(self):
+        return (1 - Boundaries.CPU_UPPER_BOUND,
+                1 - Boundaries.NETWORK_UPPER_BOUND,
+                1 - Boundaries.MEMORY_UPPER_BOUND)
+
+    def getUpperBounds(self):
+
+        metrics = self.getMetrics()
+
+        return {
+            "C" : metrics["C"] > Boundaries.CPU_UPPER_BOUND,
+            "N" : metrics["N"] > Boundaries.NETWORK_UPPER_BOUND,
+            "M" : metrics["M"] > Boundaries.MEMORY_UPPER_BOUND,
+        }
+
+    def getLowerBounds(self):
+
+        metrics = self.getMetrics()
+
+        return {
+            "C" : metrics["C"] > Boundaries.CPU_LOWER_BOUND,
+            "N" : metrics["N"] > Boundaries.NETWORK_LOWER_BOUND,
+            "M" : metrics["M"] > Boundaries.MEMORY_LOWER_BOUND,
         }

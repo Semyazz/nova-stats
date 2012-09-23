@@ -39,6 +39,7 @@ class LinearProgramingAlgorithm(object):
                 values = vm.getMetrics(host) #todo optimization
 
                 lpVar = pulp.LpVariable("host %s contains %s" % (vm.InstanceName, host.Hostname),0,1,'Integer')
+                innerX.append(lpVar)
 
                 prob += ulp >= lpVar
 
@@ -46,16 +47,16 @@ class LinearProgramingAlgorithm(object):
                 n.append([lpVar,values["N"]])
                 m.append([lpVar,values["M"]])
 
-            prob += pulp.LpAffineExpression(c) <= 1
-            prob += pulp.LpAffineExpression(n) <= 1
-            prob += pulp.LpAffineExpression(m) <= 1
+            prob += (pulp.LpAffineExpression(c) <= 1)
+            prob += (pulp.LpAffineExpression(n) <= 1)
+            prob += (pulp.LpAffineExpression(m) <= 1)
 
 
         #every vm on only one host
         for i in range(len(vms)):
 
             lps = [item[i] for item in x]
-            prob += pulp.lpSum(lps) == 1
+            prob += (pulp.lpSum(lps) == 1)
 
 
         prob += pulp.lpSum(u)

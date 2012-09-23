@@ -53,6 +53,14 @@ LOG = logging.getLogger(__name__)
 FLAGS = flags.FLAGS
 #LOG.logger.setLevel(10)
 
+
+def find(f, seq):
+    """Return first item in sequence where f(item) == True."""
+    for item in seq:
+        if f(item):
+            return item
+
+
 class HealthMonitorManager(manager.Manager):
     BASE_RPC_API_VERSION = '1.0'
     RPC_API_VERSION = '1.0'
@@ -65,6 +73,7 @@ class HealthMonitorManager(manager.Manager):
 
 
     lock = threading.RLock()
+    lock2 = threading.RLock()
 
     # RPC API Implementation -------------------------------------------------------------------------------------------
     def raise_alert(self, ctx=None, alert=None):
@@ -76,46 +85,13 @@ class HealthMonitorManager(manager.Manager):
                 # TODO: Maybe alerts should be added to cyclic buffer?
                 return
             else:
-                self.STARTED = True
-
+                self.STARTED = self.dataProvider.preProcessAlert(alert)
         try:
-            counter = alert["value"]
-            metricName = counter[1]
-            hostName = counter[9]["host"]
 
-            util = 0
-            now = datetime.datetime.now()
-            startTime = now - datetime.timedelta(minutes=5)
-
-
-            if metricName == 'mem_util':
-                memFree = self.dataProvider.local_storage.query(startTime,
-                                                                now,
-                                                                "mem_free",
-                                                                hostname = hostName).Average
-                memTotal = rrd.getSingleValue(self.dataProvider.local_storage, now, "mem_total", alert.HostName)
-
-                util = (1 - memFree / memTotal) * 100
-
-            elif metricName == 'cpu_util':
-                cpu_user = self.dataProvider.local_storage.query(startTime, now, "cpu_user", hostname = hostName).Average
-                cpu_system = rrd.getSingleValue(self.dataProvider.local_storage, now, "cpu_system", alert.HostName)
-
-                util = cpu_user + cpu_system
-
-            elif metricName == 'pkts':
-                pkts_out = self.dataProvider.local_storage.query(startTime, now, "pkts_out", hostname = hostName).Average
-                pkts_in = rrd.getSingleValue(self.dataProvider.local_storage, now, "pkts_in", alert.HostName)
-
-                util = pkts_out + pkts_in
-
-
-
-            if util > 70 or util < 40:
-                #hostNames = self.local_storage.get_hosts_names()
-                self.prepare_resource_allocation_algorithm_input(alert)
-
-
+            if self.dataProvider.preProcessAlert(alert):
+                if not self._is_migrating():
+                    self.prepare_resource_allocation_algorithm_input(alert)
+            pass
         except Exception as err:
             print "exception %s" % err
             LOG.error(err)
@@ -125,6 +101,25 @@ class HealthMonitorManager(manager.Manager):
 
     #-------------------------------------------------------------------------------------------------------------------
 
+    def _get_scheduler_rpc_api(self):
+        if not self.scheduler_rpc_api:
+            self._init_scheduler()
+
+        return self.scheduler_rpc_api
+
+    def _is_migrating(self):
+        ctx = context.get_admin_context()
+
+        instances = self.db.instance_get_all(ctx)
+
+        for instance in instances:
+            if instance.vm_state == 'migrating':
+                LOG.error("Migration in process. Abort algorithm execution")
+                return True
+
+        return False
+        #scheduler = self._get_scheduler_rpc_api()
+
 
     # Manager inherited ------------------------------------------------------------------------------------------------
     def init_host(self):
@@ -132,13 +127,12 @@ class HealthMonitorManager(manager.Manager):
         self.topic = HealthMonitorAPI.HEALTH_MONITOR_TOPIC
         self.ctx = context.get_admin_context()
         self.ctx.read_deleted = "no"
+        self.dataProvider = DataProvider(self.RRD_ROOT_DIR, self.db, self.ctx)
         self.instances = self.db.instance_get_all_by_host(self.ctx, self.host)
         self.migration_algorithm = AntColonyAlgorithm()
 
         self._init_monitors_connections()
         self.STARTED = False
-
-        self.dataProvider = DataProvider(self.RRD_ROOT_DIR, self.db, self.ctx)
 
         self.scheduler_rpc_api = None
 
@@ -212,30 +206,57 @@ class HealthMonitorManager(manager.Manager):
 
         LOG.error("Start Algorithm")
 #        self.test_migration()
-        migrationPlans = self.migration_algorithm.execute_algorithm(input_data_set)
 
+        migrationPlans = self.migration_algorithm.execute_algorithm(input_data_set)
         LOG.error("Stop Algorithm")
 
         self.dataProvider.saveWeights()
 
+        plan, migrations_counter = self.choose_migration_plan(migrationPlans, virtualMachines)
+        LOG.error("Migration count %s", migrations_counter)
+
+        for mi in plan:
+            print "%s@%s" % (mi.instance_id, mi.hostname)
+
+        if migrations_counter != 0:
+            self.execute_plan(plan)
+            import time
+            time.sleep(60)
+
         import time
-        time.sleep(10)
-
-        self.execute_plan(migrationPlans)
-
-        import time
-        time.sleep(60)
-
-
+        time.sleep(30)
 
         pass
 
-    def create_migration_plans(self, input_data_set):
-        #TODO
-        pass
+    def choose_migration_plan(self, migrationPlans, virtualMachines):
+
+        plan = None
+
+        if migrationPlans:
+            plan = migrationPlans[0]
+        else:
+            LOG.info("There is no migration plans")
+            return (None, None)
 
 
-    def execute_plan(self, migrationPlans):
+        migrationCount = 0
+        selfMigrations = []
+
+        for vm in  virtualMachines:
+
+            migrationItem = find(lambda migration_item: migration_item.instance_id == vm.InstanceName, plan)
+
+            if vm.Hostname != migrationItem.hostname:
+                migrationCount+=1
+            else:
+                selfMigrations.append(migrationItem)
+
+        for mi in selfMigrations:
+            plan.remove(mi)
+
+        return (plan, migrationCount)
+
+    def execute_plan(self, plan):
         """
         Executes migration plan. Migrate VMs to given nodes.
         :param migrationPlans: list
@@ -246,13 +267,12 @@ class HealthMonitorManager(manager.Manager):
             if not self.scheduler_rpc_api:
                 self._init_scheduler()
 
-            assert isinstance(migrationPlans, list)
-
-            if migrationPlans:
-                plan = migrationPlans[0]
-            else:
-                LOG.info("There is no migration plans")
-                return
+#            assert isinstance(migrationPlans, list)
+#            if migrationPlans:
+#                plan = migrationPlans[0]
+#            else:
+#                LOG.info("There is no migration plans")
+#                return
 
             ctx = context.get_admin_context()
             instances = self.db.instance_get_all(self.ctx)
@@ -324,16 +344,6 @@ class HealthMonitorManager(manager.Manager):
 
         return health_rpc_api.collect_recent_stats(self.ctx, message)
 
-
-    def get_virtual_machines_locations(self):
-        """
-        Gets dictionary {"physical node hostname": set of virtual machines (their hostnames)}
-        :return:
-        """
-        pass
-
-    def get_physical_nodes_resources_utilization(self):
-        pass
 
     def _test_rpc_call(self):
 

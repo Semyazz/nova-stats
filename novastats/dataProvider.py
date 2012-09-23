@@ -4,6 +4,11 @@ import datetime
 from structures.host import Host
 from structures.vm import Vm
 from rrd.rrd import RrdWrapper
+from ceilometer.openstack.common import log
+from rrd import rrd
+
+
+LOG = log.getLogger(__name__)
 
 class DataProvider(object):
 
@@ -30,10 +35,54 @@ class DataProvider(object):
             db_instances = self.database.instance_get_all_by_host(self.context, hostName) # From DB
             db_instnaces_names = [instance.name for instance in db_instances]
 
-            if self.virtualMachines is not None:
-                host = Host(self.local_storage, db_instnaces_names, hostName, endTime, self.virtualMachines)
-            else:
-                host = Host(self.local_storage, db_instnaces_names, hostName, endTime)
+            try:
+                cpu_system = self.getWeightedAverageData(endTime, "cpu_system", hostName)
+                cpu_user = self.getWeightedAverageData(endTime, "cpu_user", hostName)
+                cpu_num = self.getSingleValue(endTime, "cpu_num", hostName)
+                cpu_speed = self.getSingleValue(endTime, "cpu_speed", hostName)
+                mem = self.getSingleValue(endTime, "mem_total", hostName)
+                mem_free = self.getWeightedAverageData(endTime, "mem_free", hostName)
+            except Exception as err:
+                LOG.error("error during retrieving host: %s data from rrd files: %s", hostName, err)
+                continue
+
+            host = Host(
+                hostName,
+                cpu_system,
+                cpu_user,
+                cpu_num,
+                cpu_speed,
+                mem,
+                mem_free)
+
+            vms = []
+
+            for instanceName in db_instnaces_names:
+                cpu_util = self.getWeightedAverageData(endTime, "vcpu_util", hostName, instanceName)
+                cpu_num = self.getSingleValue(endTime, "vcpu_num", hostName, instanceName)
+                pkts_in = self.getWeightedAverageData(endTime, "vpkts_in", hostName, instanceName)
+                pkts_out = self.getWeightedAverageData(endTime, "vpkts_out", hostName, instanceName)
+                mem_declared = self.getSingleValue(endTime, "vmem_total", hostName, instanceName)
+
+                vm = Vm(
+                    hostName,
+                    instanceName,
+                    cpu_util,
+                    cpu_num,
+                    pkts_in,
+                    pkts_out,
+                    mem_declared,
+                    cpu_speed)
+
+
+                if self.virtualMachines.has_key(instanceName):
+                    vm.setWeights(self.virtualMachines[instanceName])
+
+                vms.append(vm)
+
+            host._vms = vms
+
+            host.setVmMem()
 
             self.hosts.append(host)
 
@@ -72,5 +121,86 @@ class DataProvider(object):
                             vm.modifyM(dif)
 
 
+    def preProcessAlert(self, alert):
+
+        try:
+            counter = alert["value"]
+            metricName = counter[1]
+            hostName = counter[9]["host"]
+            util = 0
+
+            now = datetime.datetime.now()
+
+            startTime = now - datetime.timedelta(minutes=5)
+
+            db_instances = self.database.instance_get_all_by_host(self.context, hostName) # From DB
+
+            if len(db_instances) == 0:
+                #check if there are any VMs running on this host
+                return
+
+            if metricName == 'mem_util':
+
+                memFree = self.local_storage.query(startTime, now, "mem_free", hostname = hostName).Average
+                memTotal = self.getSingleValue(now, "mem_total", hostName)
+
+                print memTotal
+
+                util = (1 - memFree / memTotal) * 100
+
+            elif metricName == 'cpu_util':
+
+                cpu_user = self.local_storage.query(startTime, now, "cpu_user", hostname = hostName).Average
+                cpu_system = self.local_storage.query(startTime, now, "cpu_system", hostname = hostName).Average
+
+                util = cpu_user + cpu_system
+
+            elif metricName == 'pkts':
+
+                pkts_out = self.local_storage.query(startTime, now, "pkts_out", hostname = hostName).Average
+                pkts_in = self.local_storage.query(startTime, now, "pkts_in", hostname = hostName).Average
+
+                util = pkts_out + pkts_in
 
 
+
+            LOG.error("dataProvider host: %s %s util is %s", hostName, metricName, util)
+
+            if util > 70 or util < 40:
+                return True
+            else:
+                return False
+
+        except Exception as err:
+            LOG.error("dataProvider preProcessAlert Exception %s", err)
+
+    def getWeightedAverageData(self, endTime, metric, host, instance=None):
+
+        startTime = endTime - datetime.timedelta(minutes=5)
+
+        _5minuteData = self.local_storage.query(startTime, endTime, metric, instance, host)
+
+        startTime = endTime - datetime.timedelta(minutes=10)
+
+        _10minuteData = self.local_storage.query(startTime, endTime, metric, instance, host)
+
+        startTime = endTime - datetime.timedelta(minutes=15)
+
+        _15minuteData = self.local_storage.query(startTime, endTime, metric, instance, host)
+
+        startTime = endTime - datetime.timedelta(minutes=30)
+
+        _30minuteData = self.local_storage.query(startTime, endTime, metric, instance, host)
+
+        return 0.4 * _5minuteData.Average +\
+               0.3 * _10minuteData.Average +\
+               0.2 * _15minuteData.Average +\
+               0.1 * _30minuteData.Average
+
+    def getSingleValue(self, endTime, metric, host, instance=None):
+
+        startTime = endTime - datetime.timedelta(minutes=1)
+
+        result = self.local_storage.query(startTime, endTime, metric, instance, host)
+
+        return result.getLastSingleValue()

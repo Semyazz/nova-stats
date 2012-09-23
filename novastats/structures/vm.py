@@ -10,18 +10,20 @@ class Vm(object):
 
 
 
-    def __init__(self, rrdWrapper, instanceName, hostName, cpu_speed, endTime, weight=None):
+    def __init__(self,
+                 hostName,
+                 instanceName,
+                 cpu_util,
+                 cpu_num,
+                 pkts_in,
+                 pkts_out,
+                 mem_declared,
+                 cpu_speed):
 
         self.Hostname = hostName
         self.InstanceName = instanceName
 
-        self.setWeights(weight)
 
-        cpu_util = rrd.getWeightedAverageData(rrdWrapper, endTime, "vcpu_util", hostName, instanceName)
-        cpu_num = rrd.getSingleValue(rrdWrapper, endTime, "vcpu_num", hostName, instanceName)
-        pkts_in = rrd.getWeightedAverageData(rrdWrapper, endTime, "vpkts_in", hostName, instanceName)
-        pkts_out = rrd.getWeightedAverageData(rrdWrapper, endTime, "vpkts_out", hostName, instanceName)
-        mem_declared = rrd.getSingleValue(rrdWrapper, endTime, "vmem_total", hostName, instanceName)
 
         LOG.error("vm: %s\t"
                   "cpu_util %s\t"
@@ -55,8 +57,8 @@ class Vm(object):
         return self._mem
 
     def getMWeight(self, host):
-        #return self.wC * self.getC(host) + self.wM * self._mem_declared + self.wN * self.getN(host) #first (dump) version
-	    #return max( self.wM * (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared, self._mem_declared)
+    #return self.wC * self.getC(host) + self.wM * self._mem_declared + self.wN * self.getN(host) #first (dump) version
+    #return max( self.wM * (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared, self._mem_declared)
 
         first = max(256, (self.getC(host) + self.getN(host)) / 2.0 * self._mem_declared)
         weight = min(first  + self.wM * self._mem_declared, self._mem_declared)
@@ -67,13 +69,13 @@ class Vm(object):
 
 
     def setMem(self, host, m_weight_sum):
-        self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host) 
+        self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host)
         #self._mem =  self._mem_declared #mem declared
-	
+
 
 
     def getC (self, host):
-         return self.getCValue() / host._cpu
+        return self.getCValue() / host._cpu
 
     def getN(self, host):
         return self.getNValue() / host._bandwidth
@@ -95,7 +97,7 @@ class Vm(object):
             "C" : self.getC(host),
             "N" : self.getN(host),
             "M" : self.getM(host),
-           }
+            }
 
     def getWeights(self):
         return self.wM
