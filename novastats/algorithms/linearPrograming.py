@@ -38,7 +38,7 @@ class LinearProgramingAlgorithm(object):
             for vm in vms:
                 values = vm.getMetrics(host) #todo optimization
 
-                lpVar = pulp.LpVariable("host %s contains %s" % vm.InstanceName % hosts[i].Hostname,0,1,'Integer')
+                lpVar = pulp.LpVariable("host %s contains %s" % (vm.InstanceName, host.Hostname),0,1,'Integer')
 
                 prob += ulp >= lpVar
 
