@@ -38,7 +38,7 @@ class Vm(object):
             pkts_out,
             mem_declared)
 
-        self._cpu_util = cpu_util / 100
+        self._cpu_util = cpu_util / 100.0
         self._cpu_num = cpu_num
         self._pkts_in = pkts_in
         self._pkts_out = pkts_out
@@ -78,13 +78,13 @@ class Vm(object):
 
 
     def getC (self, host):
-        return self.getCValue() / host._cpu
+        return self.getCValue() / float(host._cpu)
 
     def getN(self, host):
-        return self.getNValue() / host._bandwidth
+        return self.getNValue() / float(host._bandwidth)
 
     def getM(self, host):
-        return self.getMValue() / host._mem
+        return self.getMValue() / float(host._mem)
 
     def getValues(self):
 

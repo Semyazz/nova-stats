@@ -44,7 +44,7 @@ class Host(object):
         self._cpu_num = cpu_num
         self._cpu_speed = cpu_speed
         self._mem = mem
-        self._mem_util = 1 - mem_free / mem
+        self._mem_util = 1.0 - (float(mem_free) / float(mem))
 
         self._cpu = self._cpu_speed * cpu_num
 
@@ -63,9 +63,9 @@ class Host(object):
 
         vmValues = [vmi.getValues() for vmi in self._vms]
 
-        cValue = 0
-        nValue = 0
-        mValue = 0
+        cValue = 0.0
+        nValue = 0.0
+        mValue = 0.0
 
         #LOG.error("values %s", vmValues)
 
@@ -77,9 +77,9 @@ class Host(object):
         #LOG.error("c value %s", cValue)
 
         return {
-            "C" : cValue / self._cpu,
-            "N" : nValue / self._bandwidth,
-            "M" : mValue / self._mem,
+            "C" : float(cValue) / float(self._cpu),
+            "N" : float(nValue) / float(self._bandwidth),
+            "M" : float(mValue) / float(self._mem),
         }
 
     def setVmMem(self):
@@ -108,9 +108,9 @@ class Host(object):
         metrics = self.getMetrics()
 
         return {
-            "C" : metrics["C"] > Boundaries.CPU_LOWER_BOUND,
-            "N" : metrics["N"] > Boundaries.NETWORK_LOWER_BOUND,
-            "M" : metrics["M"] > Boundaries.MEMORY_LOWER_BOUND,
+            "C" : metrics["C"] < Boundaries.CPU_LOWER_BOUND,
+            "N" : metrics["N"] < Boundaries.NETWORK_LOWER_BOUND,
+            "M" : metrics["M"] < Boundaries.MEMORY_LOWER_BOUND,
         }
 
     def getIsOn(self):

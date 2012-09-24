@@ -37,6 +37,7 @@ from rrd import rrd
 from rrd.rrd import RrdWrapper
 from structures.host import Host
 from algorithms.base import MigrationItem
+from novastats.flags import MigrationParams
 
 from rpcapi import HealthMonitorAPI
 
@@ -72,6 +73,8 @@ class HealthMonitorManager(manager.Manager):
 ##        self.topic = topic
 
 
+    timestamp = None
+    stabilizationTimeDelta = datetime.timedelta(minutes=20)
     lock = threading.RLock()
     lock2 = threading.RLock()
 
@@ -85,6 +88,12 @@ class HealthMonitorManager(manager.Manager):
                 # TODO: Maybe alerts should be added to cyclic buffer?
                 return
             else:
+
+                # Do not check alerts because it's too early
+                if self.timestamp is not None and (self.timestamp + MigrationParams.STABILIZATION_TIME_DELTA) > datetime.datetime.now():
+                    LOG.info("It's too early to run algorithm. Waiting for stabilization.")
+                    return
+
                 self.STARTED = self.dataProvider.preProcessAlert(alert)
         try:
 
@@ -192,31 +201,32 @@ class HealthMonitorManager(manager.Manager):
             LOG.error("host %s\t %s", host.Hostname, host.getMetrics())
             virtualMachines.extend(host._vms)
 
-#        collectedData = self.collect_data(hostname, vm_name, resource)
-#        physicalNodes = self.get_physical_nodes_resources_utilization()
-
-#        input_data_set = dict(resources_history=collectedData, virtual_machines=virtualMachines, physical_nodes=physicalNodes)
-#
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
         input_data_set = InputData(Hosts=hosts, VirtualMachines=virtualMachines, Alert=alert)
 
 
+        # Count used hosts and how many boundaries are violated
         usedHostsBeforeMigration = sum([host.getIsOn() for host in hosts])
-		
+        # Dictionary <host, tuple(upperBoundsViolations, lowerBoundsViolations)>
+        violationsDictionaryBeforeMigration = HealthMonitorManager.count_boundaries_violations(hosts)
+
         #todo if alert mem
         self.dataProvider.updateWeights()
 
         LOG.error("Start Algorithm")
-#        self.test_migration()
-
         migrationPlans = self.migration_algorithm.execute_algorithm(input_data_set)
         LOG.error("Stop Algorithm")
 
         assert migrationPlans is not None, "Migration plans is none"
-
         plan, migrations_counter = self.choose_migration_plan(migrationPlans, virtualMachines)
 
+        # Count used hosts and how many boundaries are violated
         usedHostsAfterMigration = sum([host.getIsOn() for host in hosts])
+        # Dictionary <host, tuple(upperBoundsViolations, lowerBoundsViolations)>
+        violationsDictionaryAfterMigration = HealthMonitorManager.count_boundaries_violations(hosts)
+
+        # Zysk na naruszonych granicach SLA.
+        profitUpper, profitLower = HealthMonitorManager.boundaries_profit_gained(violationsDictionaryBeforeMigration, violationsDictionaryAfterMigration)
 
         LOG.error("Migration count %s", migrations_counter)
         LOG.error("Hosts used before %s, after %s", usedHostsBeforeMigration, usedHostsAfterMigration)
@@ -234,13 +244,103 @@ class HealthMonitorManager(manager.Manager):
 
         if migrations_counter != 0:
             self.execute_plan(plan)
-            import time
-            time.sleep(60)
 
-        import time
-        time.sleep(30)
+            #Timestamp
+            self.timestamp = datetime.datetime.now()
 
         pass
+
+    @staticmethod
+    def count_boundaries_violations(hosts):
+
+        def count_true(dictionary):
+            assert isinstance(dictionary, dict)
+
+            def raise_exception_missing_key(key):
+                if not dictionary.has_key('C'):
+                    LOG.error("Missing C key")
+                    raise Exception("Missing C key")
+
+            raise_exception_missing_key("C")
+            raise_exception_missing_key("N")
+            raise_exception_missing_key("M")
+
+            true_counter = 0
+
+            if dictionary["C"]:
+                true_counter+=1
+
+            if dictionary["N"]:
+                true_counter+=1
+
+            if dictionary["M"]:
+                true_counter+=1
+
+            return true_counter
+
+        violations = {}
+
+        for host in hosts:
+            assert isinstance(host, Host)
+            upperBoundsWithRaise = count_true(host.getUpperBounds())
+            upperBoundsViolations = sum(int(violation) for violation in host.getUpperBounds().values())
+
+            assert upperBoundsWithRaise == upperBoundsViolations, "Upperbounds violations count error"
+
+
+            lowerBoundsWithRaise = count_true(host.getLowerBounds())
+            lowerBoundsViolations = sum(int(violation) for violation in host.getLowerBounds().values())
+
+            assert lowerBoundsWithRaise == lowerBoundsViolations, "Lowerbounds violations count error"
+
+            violations[host] = (upperBoundsViolations, lowerBoundsViolations)
+
+        return violations
+
+    @staticmethod
+    def boundaries_profit_gained(violationsBefore, violationsAfter):
+
+        assert isinstance(violationsBefore, dict)
+        assert isinstance(violationsAfter, dict)
+        assert len(violationsBefore.keys()) == len(violationsAfter.keys())
+
+        def sum_list_of_tuples(tuples):
+
+            sumX, sumY = 0, 0
+            for x,y in tuples:
+                sumX+=x
+                sumY+=y
+
+            return sumX, sumY
+
+        def profitFunctionSumWholeViolations():
+            """
+                Prosta funkcaj zliczająca ilość naruszeń na górnych granicach i dolnych granicach w sumie w całym środowisku
+
+                Jeśli suma naruszeń górnych granic jest większa niż
+            """
+
+            upperViolatedBefore, lowerViolatedBefore = sum_list_of_tuples(violationsBefore.values())
+            upperViolatedAfter, lowerViolatedAfter = sum_list_of_tuples(violationsAfter.values())
+
+            # ProfitUpper - int
+            # profitUpper==0 : no difference
+            # profitUpper <0 : Not good
+            # profitUpper >0 : Great we have less violations
+            profitUpper = upperViolatedBefore - upperViolatedAfter
+
+            # ProfitLower - int
+            # profitLower==0 : no difference
+            # profitLower <0 : Not good
+            # profitLower >0 : Great we have less violations
+            profitLower = lowerViolatedBefore - lowerViolatedAfter
+
+            return profitUpper, profitLower
+
+        profitUpper, profitLower = profitFunctionSumWholeViolations()
+
+        return profitUpper, profitLower
+
 
     def choose_migration_plan(self, migrationPlans, virtualMachines):
 
@@ -280,7 +380,7 @@ class HealthMonitorManager(manager.Manager):
         for mi in selfMigrations:
             plan.remove(mi)
 
-        return (plan, migrationCount)
+        return plan, migrationCount
 
 
     def updateHostVmConn(self, migrationItem, vm):

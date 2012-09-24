@@ -1,4 +1,5 @@
 __author__ = 'student'
+import datetime
 
 
 class Boundaries(object):
@@ -11,3 +12,8 @@ class Boundaries(object):
 
     MEMORY_UPPER_BOUND = 0.7
     MEMORY_LOWER_BOUND = 0.4
+
+
+class MigrationParams(object):
+
+    STABILIZATION_TIME_DELTA = datetime.timedelta(minutes=30)
