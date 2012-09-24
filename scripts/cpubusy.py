@@ -27,10 +27,11 @@ class CpuBusyThread(threading.Thread):
 print sys.argv
 
 timeInterval = float(sys.argv[1])
+timeWithoutWorkload = float(sys.argv[2])
 
 while True:
     t = CpuBusyThread()
     t.start()
     time.sleep(timeInterval)
     t.stop()
-    print "Killed"
+    time.sleep(timeWithoutWorkload)
