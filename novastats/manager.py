@@ -200,6 +200,8 @@ class HealthMonitorManager(manager.Manager):
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
         input_data_set = InputData(Hosts=hosts, VirtualMachines=virtualMachines, Alert=alert)
 
+
+        usedHostsBeforeMigration = sum([host.getIsOn() for host in hosts])
 		
         #todo if alert mem
         self.dataProvider.updateWeights()
@@ -211,10 +213,21 @@ class HealthMonitorManager(manager.Manager):
         LOG.error("Stop Algorithm")
 
         assert migrationPlans is not None, "Migration plans is none"
-        self.dataProvider.saveWeights()
 
         plan, migrations_counter = self.choose_migration_plan(migrationPlans, virtualMachines)
+
+        usedHostsAfterMigration = sum([host.getIsOn() for host in hosts])
+
         LOG.error("Migration count %s", migrations_counter)
+        LOG.error("Hosts used before %s, after %s", usedHostsBeforeMigration, usedHostsAfterMigration)
+
+        if alert['severity'] == 2 and usedHostsAfterMigration >= usedHostsBeforeMigration:
+            #todo make alert['severity'] more human readable
+
+            LOG.error("There is no profit from migration - skip")
+            return
+
+        self.dataProvider.saveWeights()
 
         for mi in plan:
             print "%s@%s" % (mi.instance_id, mi.hostname)
