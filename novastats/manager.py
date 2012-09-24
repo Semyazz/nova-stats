@@ -211,7 +211,7 @@ class HealthMonitorManager(manager.Manager):
         LOG.error("Stop Algorithm")
 
         assert migrationPlans is not None, "Migration plans is none"
-        #self.dataProvider.saveWeights()
+        self.dataProvider.saveWeights()
 
         plan, migrations_counter = self.choose_migration_plan(migrationPlans, virtualMachines)
         LOG.error("Migration count %s", migrations_counter)
@@ -260,6 +260,7 @@ class HealthMonitorManager(manager.Manager):
 
             if vm.Hostname != migrationItem.hostname:
                 migrationCount+=1
+                self.updateHostVmConn(vm, migrationItem)
             else:
                 selfMigrations.append(migrationItem)
 
@@ -267,6 +268,21 @@ class HealthMonitorManager(manager.Manager):
             plan.remove(mi)
 
         return (plan, migrationCount)
+
+
+    def updateHostVmConn(self, migrationItem, vm):
+
+        assert self.dataProvider.hosts.has_key(migrationItem.hostname), 'data provider has no host specified in migration item'
+        assert self.dataProvider.hosts.has_key(vm.Hostname), 'data provider has no host specified in vm'
+
+        hostFrom = self.dataProvider.hosts[vm.Hostname]
+        hosTo = self.dataProvider.hosts[migrationItem.hostname]
+
+        hostFrom._vms.remove(vm)
+        hosTo._vms.append(vm)
+
+
+
 
     def execute_plan(self, plan):
         """

@@ -112,3 +112,6 @@ class Host(object):
             "N" : metrics["N"] > Boundaries.NETWORK_LOWER_BOUND,
             "M" : metrics["M"] > Boundaries.MEMORY_LOWER_BOUND,
         }
+
+    def getIsOn(self):
+        return len(self._vms) > 0

@@ -20,6 +20,7 @@ class DataProvider(object):
         self.estimatedMem = {}
         self.now = None
         self.lastUpdateTime = datetime.datetime.now() - datetime.timedelta(hours=24)
+        self.hosts = {}
 
 
 
@@ -28,7 +29,7 @@ class DataProvider(object):
 
         hostNames = self.local_storage.get_hosts_names()
 
-        self.hosts = []
+        self.hosts = {}
 
         for hostName in hostNames:
 
@@ -69,7 +70,7 @@ class DataProvider(object):
 
             host.setVmMem()
 
-            self.hosts.append(host)
+            self.hosts[hostName] = host
 
         return self.hosts
 
@@ -141,6 +142,9 @@ class DataProvider(object):
 
                         for vm in host._vms:
                             vm.modifyM(dif)
+
+        else:
+            LOG.error('Last update to long time ago - do not update weights')
 
 
     def preProcessAlert(self, alert):
@@ -222,3 +226,5 @@ class DataProvider(object):
         result = self.local_storage.query(startTime, endTime, metric, instance, host)
 
         return result.getLastSingleValue()
+
+
