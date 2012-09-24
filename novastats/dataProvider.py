@@ -118,7 +118,7 @@ class DataProvider(object):
         self.virtualMachines = {}
         self.estimatedMem = {}
 
-        for host in self.hosts:
+        for host in self.hosts.values():
 
             for vm in host._vms:
                 self.virtualMachines[vm.InstanceName] = vm.getWeights()
@@ -128,7 +128,7 @@ class DataProvider(object):
 	
         if self.lastUpdateTime + datetime.timedelta(minutes=20) >= self.now:
 
-            for host in self.hosts:
+            for host in self.hosts.values():
 	        
                 for vm in host._vms:
 
@@ -184,11 +184,12 @@ class DataProvider(object):
                 pkts_out = self.local_storage.query(startTime, now, "pkts_out", hostname = hostName).Average
                 pkts_in = self.local_storage.query(startTime, now, "pkts_in", hostname = hostName).Average
 
-                util = 10 #(pkts_out + pkts_in) / 10240 * 100
+                util = (pkts_out + pkts_in) * 500.0 / 10485760 * 100
 
             LOG.error("dataProvider host: %s %s util is %s", hostName, metricName, util)
 
-            if util is not None and (util > 70):# or util < 40):
+            if util is not None and (util > 70 or util < 40):
+                LOG.error("Trigger migration algorithm")
                 return True
             else:
                 return False

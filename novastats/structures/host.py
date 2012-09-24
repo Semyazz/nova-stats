@@ -39,7 +39,7 @@ class Host(object):
             mem,
             mem_free)
 
-        self._bandwidth = 10480
+        self._bandwidth = 10485760
         self._cpu_util = cpu_user + cpu_system
         self._cpu_num = cpu_num
         self._cpu_speed = cpu_speed

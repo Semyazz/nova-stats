@@ -194,7 +194,7 @@ class HealthMonitorManager(manager.Manager):
         :return:
         """
 
-        hosts = self.dataProvider.getData()
+        hosts = self.dataProvider.getData().values()
         virtualMachines = []
 
         for host in hosts:
@@ -204,11 +204,12 @@ class HealthMonitorManager(manager.Manager):
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
         input_data_set = InputData(Hosts=hosts, VirtualMachines=virtualMachines, Alert=alert)
 
-
         # Count used hosts and how many boundaries are violated
         usedHostsBeforeMigration = sum([host.getIsOn() for host in hosts])
         # Dictionary <host, tuple(upperBoundsViolations, lowerBoundsViolations)>
         violationsDictionaryBeforeMigration = HealthMonitorManager.count_boundaries_violations(hosts)
+
+
 
         #todo if alert mem
         self.dataProvider.updateWeights()
@@ -383,7 +384,7 @@ class HealthMonitorManager(manager.Manager):
         return plan, migrationCount
 
 
-    def updateHostVmConn(self, migrationItem, vm):
+    def updateHostVmConn(self, vm, migrationItem):
 
         assert self.dataProvider.hosts.has_key(migrationItem.hostname), 'data provider has no host specified in migration item'
         assert self.dataProvider.hosts.has_key(vm.Hostname), 'data provider has no host specified in vm'
