@@ -120,14 +120,18 @@ class Vm(object):
 
     def modifyM(self, dif):
 
-        old = self.wM
+        change = round(dif)
 
-        self.wM += 0.01 * math.trunc(dif)
+        if change != 0:
 
-        if  self.wM < -1:
-            self.wM = -1
-        elif self.wM > 1:
-            self.wM = 1
+            old = self.wM
+            self.wM += 0.01 * change
 
-        LOG.error('Weight for instance %s changed to from %s to %s', self.InstanceName, old, self.wM)
+            if  self.wM < -1:
+                self.wM = -1
+            elif self.wM > 1:
+                self.wM = 1
+
+            if old != self.wM:
+                LOG.error('Weight for instance %s changed to from %s to %s', self.InstanceName, old, self.wM)
 

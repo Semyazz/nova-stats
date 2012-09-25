@@ -16,4 +16,4 @@ class Boundaries(object):
 
 class MigrationParams(object):
 
-    STABILIZATION_TIME_DELTA = datetime.timedelta(minutes=30)
+    STABILIZATION_TIME_DELTA = datetime.timedelta(minutes=5)
