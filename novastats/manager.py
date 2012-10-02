@@ -197,8 +197,10 @@ class HealthMonitorManager(manager.Manager):
         hosts = self.dataProvider.getData().values()
         virtualMachines = []
 
+        now = datetime.datetime.now()
+
         for host in hosts:
-            LOG.error("host %s\t %s", host.Hostname, host.getMetrics())
+            LOG.error("[%s] host %s\t %s", int(time.mktime(now.timetuple())), host.Hostname, host.getMetrics())
             virtualMachines.extend(host._vms)
 
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
@@ -229,8 +231,8 @@ class HealthMonitorManager(manager.Manager):
         # Zysk na naruszonych granicach SLA.
         profitUpper, profitLower = HealthMonitorManager.boundaries_profit_gained(violationsDictionaryBeforeMigration, violationsDictionaryAfterMigration)
 
-        LOG.error("Migration count %s", migrations_counter)
-        LOG.error("Hosts used before %s, after %s", usedHostsBeforeMigration, usedHostsAfterMigration)
+        LOG.error("[%s] Migration count %s", int(time.mktime(now.timetuple())), migrations_counter)
+        LOG.error("[%s] Hosts used before %s, after %s", int(time.mktime(now.timetuple())), usedHostsBeforeMigration, usedHostsAfterMigration)
 
         if alert['severity'] == 2 and usedHostsAfterMigration >= usedHostsBeforeMigration:
             #todo make alert['severity'] more human readable
@@ -241,7 +243,7 @@ class HealthMonitorManager(manager.Manager):
         self.dataProvider.saveWeights()
 
         for mi in plan:
-            print "%s@%s" % (mi.instance_id, mi.hostname)
+            LOG.error("[%s] migration %s@%s", int(time.mktime(now.timetuple())), mi.instance_id, mi.hostname)
 
         if migrations_counter != 0:
             self.execute_plan(plan)

@@ -5,6 +5,7 @@ from structures.host import Host
 from structures.vm import Vm
 from rrd.rrd import RrdWrapper
 from ceilometer.openstack.common import log
+import time
 from rrd import rrd
 
 
@@ -124,6 +125,9 @@ class DataProvider(object):
                 self.virtualMachines[vm.InstanceName] = vm.getWeights()
                 self.estimatedMem[vm.InstanceName] = vm._mem
 
+                LOG.error("[%s] instance: %s weights: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, self.virtualMachines[vm.InstanceName])
+                LOG.error("[%s] instance: %s mem: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, vm._mem)
+
     def updateWeights(self):
 	
         if self.lastUpdateTime + datetime.timedelta(minutes=20) >= self.now:
@@ -186,7 +190,7 @@ class DataProvider(object):
 
                 util = (pkts_out + pkts_in) * 500.0 / 10485760 * 100
 
-            LOG.error("dataProvider host: %s %s util is %s", hostName, metricName, util)
+            LOG.error("[%s] dataProvider host: %s %s util is %s", int(time.mktime(now.timetuple())),  hostName, metricName, util)
 
             if util is not None and (util > 70 or util < 40):
                 LOG.error("Trigger migration algorithm")
