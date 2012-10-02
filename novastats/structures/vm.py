@@ -78,7 +78,7 @@ class Vm(object):
 
 
     def getC (self, host):
-        return self.getCValue() / float(host._cpu)
+        return self.getCValue() / float(host._cpu_user)
 
     def getN(self, host):
         return self.getNValue() / float(host._bandwidth)

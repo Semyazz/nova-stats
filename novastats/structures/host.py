@@ -40,7 +40,8 @@ class Host(object):
             mem_free)
 
         self._bandwidth = 10485760
-        self._cpu_util = cpu_user + cpu_system
+        self._cpu_user = float(cpu_user)
+	self._cpu_system = float(cpu_system)
         self._cpu_num = cpu_num
         self._cpu_speed = cpu_speed
         self._mem = mem
@@ -77,7 +78,7 @@ class Host(object):
         #LOG.error("c value %s", cValue)
 
         return {
-            "C" : float(cValue) / float(self._cpu),
+            "C" : (float(cValue) + self._cpu_system) / float(self._cpu),
             "N" : float(nValue) / float(self._bandwidth),
             "M" : float(mValue) / float(self._mem),
         }
