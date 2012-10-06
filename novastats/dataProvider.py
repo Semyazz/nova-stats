@@ -181,7 +181,7 @@ class DataProvider(object):
 
             elif metricName == 'cpu_util':
 
-                cpu_idel = self.local_storage.query(startTime, now, "cpu_idle", hostname = hostName).Average
+                cpu_idle = self.local_storage.query(startTime, now, "cpu_idle", hostname = hostName).Average
 
                 util = 100 - float(cpu_idle)
 
