@@ -72,7 +72,6 @@ class DataProvider(object):
             host._vms = vms
 
             host.setVmMem()
-
             self.hosts[hostName] = host
 
         return True

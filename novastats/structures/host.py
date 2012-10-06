@@ -47,7 +47,7 @@ class Host(object):
         self._mem_util = 1.0 - (float(mem_free) / float(mem))
 
 
-        self._cpu_util = 100 - float(cpu_idle)
+        self._cpu_util = (100.0 - float(cpu_idle)) / 100.0
         self._cpu = self._cpu_speed * cpu_num
         self._cpu_system = float(cpu_system) / 100.0
 
@@ -92,7 +92,8 @@ class Host(object):
             vmi.setMem(self, mWeightSum)
 
     def getReservedSpace(self):
-        return (max(1.0 - Boundaries.CPU_UPPER_BOUND + self._cpu_system,1.0),
+
+	return (min(1.0 - Boundaries.CPU_UPPER_BOUND + self._cpu_system,1.0),
                 1.0 - Boundaries.NETWORK_UPPER_BOUND,
                 1.0 - Boundaries.MEMORY_UPPER_BOUND)
 

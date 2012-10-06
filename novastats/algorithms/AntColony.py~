@@ -108,7 +108,7 @@ class AntColonyAlgorithm(AlgorithmBase):
         assert len(Sbest[Items[0]]) == n, "Sbest[Items[0]] != n"
         # Solution matrix
 
-        print "Three"
+	    print "Three"
 
         # Ant
         for q in range(0, nCycles-1):

@@ -1,4 +1,4 @@
-# -*- encoding: utf-8 -
+# -*- encoding: utf-8 -*-
 
 __docformat__ = 'restructuredtext en'
 
@@ -210,6 +210,8 @@ class HealthMonitorManager(manager.Manager):
             virtualMachines.extend(host._vms)
             for vm in host._vms:
                 LOG.error("stat [%s]vm %s\t %s", int(time.mktime(now.timetuple())), vm.InstanceName, vm.getMetrics(host))
+
+        print "WirtualMachines %s" (len(virtualMachines))
 
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
         input_data_set = InputData(Hosts=hosts, VirtualMachines=virtualMachines, Alert=alert)
