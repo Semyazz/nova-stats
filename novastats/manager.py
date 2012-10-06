@@ -194,14 +194,14 @@ class HealthMonitorManager(manager.Manager):
         :return:
         """
 
-        isValid = self.dataProvider.getData().values()
+        isValid = self.dataProvider.getData()
 
         if not isValid:
             LOG.error("skipping this round")
             return
 
 
-        hosts = self.dataProvider.hosts
+        hosts = self.dataProvider.hosts.values()
         virtualMachines = []
         now = datetime.datetime.now()
 
