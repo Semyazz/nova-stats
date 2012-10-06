@@ -145,10 +145,9 @@ class DataProvider(object):
 
                         #todo think what you're doing
 
-                        for vm in host._vms:
-                            vm.modifyM(dif)
-                            self.virtualMachines[vm.InstanceName] = vm.getWeights()
-                            LOG.error("stat [%s] instance: %s weights: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, self.virtualMachines[vm.InstanceName])
+                        vm.modifyM(dif)
+                        self.virtualMachines[vm.InstanceName] = vm.getWeights()
+                        LOG.error("stat [%s] instance: %s weights: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, self.virtualMachines[vm.InstanceName])
 
         else:
             LOG.error('Last update to long time ago - do not update weights')
