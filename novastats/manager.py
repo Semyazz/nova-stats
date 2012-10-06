@@ -200,7 +200,9 @@ class HealthMonitorManager(manager.Manager):
         now = datetime.datetime.now()
 
         for host in hosts:
-            LOG.error("[%s] host %s\t %s", int(time.mktime(now.timetuple())), host.Hostname, host.getMetrics())
+            LOG.error("stat [%s] host %s\t %s", int(time.mktime(now.timetuple())), host.Hostname, host.getMetrics())
+	    for vm in host._vms:
+	    	LOG.error("stat [%s]vm %s\t %s", int(time.mktime(now.timetuple())), vm.InstanceName, vm.getMetrics(host))	
             virtualMachines.extend(host._vms)
 
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
@@ -231,8 +233,8 @@ class HealthMonitorManager(manager.Manager):
         # Zysk na naruszonych granicach SLA.
         profitUpper, profitLower = HealthMonitorManager.boundaries_profit_gained(violationsDictionaryBeforeMigration, violationsDictionaryAfterMigration)
 
-        LOG.error("[%s] Migration count %s", int(time.mktime(now.timetuple())), migrations_counter)
-        LOG.error("[%s] Hosts used before %s, after %s", int(time.mktime(now.timetuple())), usedHostsBeforeMigration, usedHostsAfterMigration)
+        LOG.error("stat [%s] Migration count %s", int(time.mktime(now.timetuple())), migrations_counter)
+        LOG.error("stat [%s] Hosts used before %s, after %s", int(time.mktime(now.timetuple())), usedHostsBeforeMigration, usedHostsAfterMigration)
 
         if alert['severity'] == 2 and usedHostsAfterMigration >= usedHostsBeforeMigration:
             #todo make alert['severity'] more human readable
@@ -243,7 +245,7 @@ class HealthMonitorManager(manager.Manager):
         self.dataProvider.saveWeights()
 
         for mi in plan:
-            LOG.error("[%s] migration %s@%s", int(time.mktime(now.timetuple())), mi.instance_id, mi.hostname)
+            LOG.error("stat [%s] migration %s@%s", int(time.mktime(now.timetuple())), mi.instance_id, mi.hostname)
 
         if migrations_counter != 0:
             self.execute_plan(plan)
@@ -348,7 +350,7 @@ class HealthMonitorManager(manager.Manager):
     def choose_migration_plan(self, migrationPlans, virtualMachines):
 
         plan = None
-
+	
         if migrationPlans:
             plan = migrationPlans[0]
         else:
@@ -366,6 +368,8 @@ class HealthMonitorManager(manager.Manager):
 #        print "Migration Items"
 #        for item in plan:
 #            print "%s@%s" % (item.instance_id, item.hostname)
+
+	print plan
 
         for vm in  virtualMachines:
 

@@ -38,8 +38,8 @@ class DataProvider(object):
             db_instnaces_names = [instance.name for instance in db_instances]
 
             try:
-                cpu_system = self.getWeightedAverageData(endTime, "cpu_system", hostName)
-                cpu_user = self.getWeightedAverageData(endTime, "cpu_user", hostName)
+                cpu_idle = self.getWeightedAverageData(endTime, "cpu_idle", hostName)
+		cpu_system = self.getWeightedAverageData(endTime, "cpu_system", hostName)
                 cpu_num = self.getSingleValue(endTime, "cpu_num", hostName)
                 cpu_speed = self.getSingleValue(endTime, "cpu_speed", hostName)
                 mem = self.getSingleValue(endTime, "mem_total", hostName)
@@ -51,8 +51,8 @@ class DataProvider(object):
 
             host = Host(
                 hostName,
-                cpu_system,
-                cpu_user,
+                cpu_idle,
+		cpu_system,
                 cpu_num,
                 cpu_speed,
                 mem,
@@ -125,8 +125,8 @@ class DataProvider(object):
                 self.virtualMachines[vm.InstanceName] = vm.getWeights()
                 self.estimatedMem[vm.InstanceName] = vm._mem
 
-                LOG.error("[%s] instance: %s weights: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, self.virtualMachines[vm.InstanceName])
-                LOG.error("[%s] instance: %s mem: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, vm._mem)
+                LOG.error("stat [%s] instance: %s weights: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, self.virtualMachines[vm.InstanceName])
+                LOG.error("stat [%s] instance: %s mem: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, vm._mem)
 
     def updateWeights(self):
 	
@@ -137,8 +137,11 @@ class DataProvider(object):
                 for vm in host._vms:
 
                     if self.estimatedMem.has_key(vm.InstanceName):
+				
                         estimatedMem = self.estimatedMem[vm.InstanceName]
                         assert estimatedMem != 0, "estimated mem is 0"
+
+			LOG.error("estimated mem %s %s", estimatedMem, vm._mem)
 
                         dif = vm._mem / estimatedMem
 
@@ -178,10 +181,9 @@ class DataProvider(object):
 
             elif metricName == 'cpu_util':
 
-                cpu_user = self.local_storage.query(startTime, now, "cpu_user", hostname = hostName).Average
-                cpu_system = self.local_storage.query(startTime, now, "cpu_system", hostname = hostName).Average
+                cpu_user = self.local_storage.query(startTime, now, "cpu_idle", hostname = hostName).Average
 
-                util = cpu_user + cpu_system
+                util = 1 - float(cpu_user)
 
             elif metricName == 'pkts':
 
@@ -190,9 +192,9 @@ class DataProvider(object):
 
                 util = (pkts_out + pkts_in) * 500.0 / 10485760 * 100
 
-            LOG.error("[%s] dataProvider host: %s %s util is %s", int(time.mktime(now.timetuple())),  hostName, metricName, util)
+            LOG.error("stat [%s] dataProvider host: %s %s util is %s", int(time.mktime(now.timetuple())),  hostName, metricName, util)
 
-            if util is not None and (util > 70 or util < 40):
+            if util is not None and (util > 85 or util < 40):
                 LOG.error("Trigger migration algorithm")
                 return True
             else:

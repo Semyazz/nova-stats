@@ -3,6 +3,8 @@ __author__ = 'michal'
 from ceilometer.openstack.common import log
 from novastats.rrd import rrd
 import math
+import time
+import datetime
 
 LOG = log.getLogger(__name__)
 
@@ -25,18 +27,18 @@ class Vm(object):
 
 
 
-        LOG.error("vm: %s\t"
-                  "cpu_util %s\t"
-                  "cpu_num %s\t"
-                  "pckts_in %s\t"
-                  "pckts_out %s\t"
-                  "mem_declared %s",
-            instanceName,
-            cpu_util,
-            cpu_num,
-            pkts_in,
-            pkts_out,
-            mem_declared)
+#        LOG.error("vm: %s\t"
+#                  "cpu_util %s\t"
+#                  "cpu_num %s\t"
+#                  "pckts_in %s\t"
+#                  "pckts_out %s\t"
+#                  "mem_declared %s",
+#            instanceName,
+#            cpu_util,
+#            cpu_num,
+#            pkts_in,
+#            pkts_out,
+#            mem_declared)
 
         self._cpu_util = cpu_util / 100.0
         self._cpu_num = cpu_num
@@ -69,16 +71,16 @@ class Vm(object):
 
 
     def setMem(self, host, m_weight_sum):
-        self._mem = host._mem * host._mem_util / m_weight_sum * self.getMWeight(host)
+        self._mem = max(host._mem * host._mem_util / m_weight_sum * self.getMWeight(host), self._mem_declared)
 
-        #LOG.info("%s * %s / %s * %s = %s " %
+        LOG.error("stat [%s] vm %s estimated mem %s", int(time.mktime(datetime.datetime.now().timetuple())), self.InstanceName, self._mem)
         #         (host._mem, host._mem_util, m_weight_sum ,self.getMWeight(host), self._mem))
         #self._mem =  self._mem_declared #mem declared
 
 
 
     def getC (self, host):
-        return self.getCValue() / float(host._cpu_user)
+        return self.getCValue() / float(host._cpu)
 
     def getN(self, host):
         return self.getNValue() / float(host._bandwidth)

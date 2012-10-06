@@ -15,8 +15,8 @@ class Host(object):
 
     def __init__(self,
                  name,
-                 cpu_system,
-                 cpu_user,
+                 cpu_idle,
+		 cpu_system,
                  cpu_num,
                  cpu_speed,
                  mem,
@@ -24,30 +24,30 @@ class Host(object):
 
         self.Hostname = name
 
-        LOG.error("host: %s\t"
-                  "cpu_system %s\t"
-                  "cpu_user %s\t"
-                  "cpu_num %s\t"
-                  "cpu_speed %s\t"
-                  "mem %s\t"
-                  "mem_free %s",
-            name,
-            cpu_system,
-            cpu_user,
-            cpu_num,
-            cpu_speed,
-            mem,
-            mem_free)
+#        LOG.error("host: %s\t"
+#                  "cpu_system %s\t"
+#                  "cpu_user %s\t"
+#                  "cpu_num %s\t"
+#                  "cpu_speed %s\t"
+#                  "mem %s\t"
+#                  "mem_free %s",
+#            name,
+#            cpu_system,
+#            cpu_user,
+#            cpu_num,
+#            cpu_speed,
+#            mem,
+#            mem_free)
 
         self._bandwidth = 10485760
-        self._cpu_user = float(cpu_user)
-	self._cpu_system = float(cpu_system)
+        self._cpu_idle = float(cpu_idle)
         self._cpu_num = cpu_num
         self._cpu_speed = cpu_speed
         self._mem = mem
         self._mem_util = 1.0 - (float(mem_free) / float(mem))
 
         self._cpu = self._cpu_speed * cpu_num
+	self._cpu_system = self._cpu *  float(cpu_system) / 100.0
 
         self._vms = []
 
