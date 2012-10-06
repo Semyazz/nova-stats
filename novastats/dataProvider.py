@@ -66,6 +66,8 @@ class DataProvider(object):
 
                 if vm is not None:
                     vms.append(vm)
+                else:
+                    return False
 
             host._vms = vms
 
@@ -73,7 +75,7 @@ class DataProvider(object):
 
             self.hosts[hostName] = host
 
-        return self.hosts
+        return True
 
 
     def createVm(self, hostName, instanceName, hostCpuSpeed, endTime):

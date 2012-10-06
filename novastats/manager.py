@@ -194,15 +194,21 @@ class HealthMonitorManager(manager.Manager):
         :return:
         """
 
-        hosts = self.dataProvider.getData().values()
-        virtualMachines = []
+        isValid = self.dataProvider.getData().values()
 
+        if not isValid:
+            LOG.error("skipping this round")
+            return
+
+
+        hosts = self.dataProvider.hosts
+        virtualMachines = []
         now = datetime.datetime.now()
 
         for host in hosts:
             LOG.error("stat [%s] host %s\t %s", int(time.mktime(now.timetuple())), host.Hostname, host.getMetrics())
-	    for vm in host._vms:
-	    	LOG.error("stat [%s]vm %s\t %s", int(time.mktime(now.timetuple())), vm.InstanceName, vm.getMetrics(host))	
+        for vm in host._vms:
+            LOG.error("stat [%s]vm %s\t %s", int(time.mktime(now.timetuple())), vm.InstanceName, vm.getMetrics(host))
             virtualMachines.extend(host._vms)
 
         InputData = namedtuple('InputData', 'Hosts VirtualMachines Alert')
