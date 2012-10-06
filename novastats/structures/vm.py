@@ -71,7 +71,7 @@ class Vm(object):
 
 
     def setMem(self, host, m_weight_sum):
-        self._mem = max(host._mem * host._mem_util / m_weight_sum * self.getMWeight(host), self._mem_declared)
+        self._mem = min(host._mem * host._mem_util / m_weight_sum * self.getMWeight(host), self._mem_declared)
 
         LOG.error("stat [%s] vm %s estimated mem %s", int(time.mktime(datetime.datetime.now().timetuple())), self.InstanceName, self._mem)
         #         (host._mem, host._mem_util, m_weight_sum ,self.getMWeight(host), self._mem))

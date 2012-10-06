@@ -349,17 +349,30 @@ class HealthMonitorManager(manager.Manager):
 
     def choose_migration_plan(self, migrationPlans, virtualMachines):
 
+        minValue = len(virtualMachines)
         plan = None
-	
+
         if migrationPlans:
-            plan = migrationPlans[0]
+            for current in migrationPlans:
+
+                migrationCount = 0
+
+                for vm in  virtualMachines:
+                    migrationItem = find(lambda migration_item: migration_item.instance_id == vm.InstanceName, current)
+
+                    if vm.Hostname != migrationItem.hostname:
+                        migrationCount+=1
+
+                if migrationCount < minValue:
+                    plan = current
+
         else:
             LOG.info("There is no migration plans")
             return (None, None)
 
 
-        migrationCount = 0
         selfMigrations = []
+        migrationCount = 0
 
 #        print "vms"
 #        for vm in virtualMachines:
@@ -368,9 +381,6 @@ class HealthMonitorManager(manager.Manager):
 #        print "Migration Items"
 #        for item in plan:
 #            print "%s@%s" % (item.instance_id, item.hostname)
-
-	print plan
-
         for vm in  virtualMachines:
 
             assert plan is not None, "Plan is none"

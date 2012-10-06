@@ -16,7 +16,7 @@ class Host(object):
     def __init__(self,
                  name,
                  cpu_idle,
-		 cpu_system,
+		         cpu_system,
                  cpu_num,
                  cpu_speed,
                  mem,
@@ -42,12 +42,14 @@ class Host(object):
         self._bandwidth = 10485760
         self._cpu_idle = float(cpu_idle)
         self._cpu_num = cpu_num
-        self._cpu_speed = cpu_speed
+        self._cpu_speed = 3000.0
         self._mem = mem
         self._mem_util = 1.0 - (float(mem_free) / float(mem))
 
+
+        self._cpu_util = 100 - float(cpu_idle)
         self._cpu = self._cpu_speed * cpu_num
-	self._cpu_system = self._cpu *  float(cpu_system) / 100.0
+        self._cpu_system = float(cpu_system) / 100.0
 
         self._vms = []
 
@@ -64,23 +66,23 @@ class Host(object):
 
         vmValues = [vmi.getValues() for vmi in self._vms]
 
-        cValue = 0.0
+        #cValue = 0.0
         nValue = 0.0
         mValue = 0.0
 
         #LOG.error("values %s", vmValues)
 
         for vmValue in vmValues:
-            cValue += vmValue["C"]
+            #cValue += vmValue["C"]
             nValue += vmValue["N"]
             mValue += vmValue["M"]
 
         #LOG.error("c value %s", cValue)
 
         return {
-            "C" : (float(cValue) + self._cpu_system) / float(self._cpu),
+            "C" : self._cpu_util,
             "N" : float(nValue) / float(self._bandwidth),
-            "M" : float(mValue) / float(self._mem),
+            "M" : self._mem_util,
         }
 
     def setVmMem(self):
@@ -90,7 +92,7 @@ class Host(object):
             vmi.setMem(self, mWeightSum)
 
     def getReservedSpace(self):
-        return (1.0 - Boundaries.CPU_UPPER_BOUND,
+        return (max(1.0 - Boundaries.CPU_UPPER_BOUND + self._cpu_system,1.0),
                 1.0 - Boundaries.NETWORK_UPPER_BOUND,
                 1.0 - Boundaries.MEMORY_UPPER_BOUND)
 

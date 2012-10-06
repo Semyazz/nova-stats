@@ -39,7 +39,7 @@ class DataProvider(object):
 
             try:
                 cpu_idle = self.getWeightedAverageData(endTime, "cpu_idle", hostName)
-		cpu_system = self.getWeightedAverageData(endTime, "cpu_system", hostName)
+                cpu_system = self.getWeightedAverageData(endTime, "cpu_system", hostName)
                 cpu_num = self.getSingleValue(endTime, "cpu_num", hostName)
                 cpu_speed = self.getSingleValue(endTime, "cpu_speed", hostName)
                 mem = self.getSingleValue(endTime, "mem_total", hostName)
@@ -52,7 +52,7 @@ class DataProvider(object):
             host = Host(
                 hostName,
                 cpu_idle,
-		cpu_system,
+                cpu_system,
                 cpu_num,
                 cpu_speed,
                 mem,
@@ -116,21 +116,18 @@ class DataProvider(object):
 	
         self.lastUpdateTime = datetime.datetime.now()
 
-        self.virtualMachines = {}
         self.estimatedMem = {}
 
         for host in self.hosts.values():
 
             for vm in host._vms:
-                self.virtualMachines[vm.InstanceName] = vm.getWeights()
                 self.estimatedMem[vm.InstanceName] = vm._mem
-
-                LOG.error("stat [%s] instance: %s weights: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, self.virtualMachines[vm.InstanceName])
                 LOG.error("stat [%s] instance: %s mem: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, vm._mem)
 
     def updateWeights(self):
 	
         if self.lastUpdateTime + datetime.timedelta(minutes=20) >= self.now:
+            self.virtualMachines = {}
 
             for host in self.hosts.values():
 	        
@@ -141,7 +138,7 @@ class DataProvider(object):
                         estimatedMem = self.estimatedMem[vm.InstanceName]
                         assert estimatedMem != 0, "estimated mem is 0"
 
-			LOG.error("estimated mem %s %s", estimatedMem, vm._mem)
+                        LOG.error("estimated mem %s %s", estimatedMem, vm._mem)
 
                         dif = vm._mem / estimatedMem
 
@@ -149,6 +146,8 @@ class DataProvider(object):
 
                         for vm in host._vms:
                             vm.modifyM(dif)
+                            self.virtualMachines[vm.InstanceName] = vm.getWeights()
+                            LOG.error("stat [%s] instance: %s weights: %s", int(time.mktime(self.lastUpdateTime.timetuple())), vm.InstanceName, self.virtualMachines[vm.InstanceName])
 
         else:
             LOG.error('Last update to long time ago - do not update weights')
@@ -181,9 +180,9 @@ class DataProvider(object):
 
             elif metricName == 'cpu_util':
 
-                cpu_user = self.local_storage.query(startTime, now, "cpu_idle", hostname = hostName).Average
+                cpu_idel = self.local_storage.query(startTime, now, "cpu_idle", hostname = hostName).Average
 
-                util = 1 - float(cpu_user)
+                util = 100 - float(cpu_idle)
 
             elif metricName == 'pkts':
 
